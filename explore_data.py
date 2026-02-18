@@ -47,3 +47,12 @@ def main():
         print("Column 'emp_title' not found in this chunk. Checking available columns...")
         print(list(first_chunk.columns))
 
+        # 4. Check the "int_rate" column (the percentage one)
+        if "int_rate" in first_chunk.columns:
+            print("=" * 50)
+            print("SAMPLE of 'int_rate' column (Raw Data):")
+            print("=" * 50)
+            print(first_chunk["int_rate"].head(10).to_string())
+            print("\n Observation:")
+            print("They end with '%', which means we need to strip that in cleaner.py. \n")
+
