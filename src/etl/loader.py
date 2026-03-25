@@ -160,7 +160,6 @@ class PortfolioDataLoader:
                 self.engine,
                 if_exists='append',
                 index=False,
-                method='multi'
             )
 
             print(f"   -> Processed and uploaded chunk {chunk_counter} ({chunksize} rows)")
