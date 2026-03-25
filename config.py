@@ -52,7 +52,7 @@ DB_EXPORT_FILE = PROCESSED_DATA_DIR / "database_export.csv"
 # Please match these settings to your local PostgreSQL instance
 DB_CONFIG = {
     "user": os.getenv("DB_USER", "postgres"),
-    "password": os.getenv("DB_PASSWORD", "your_password_here"), # REMEMBER TO UPDATE THIS!
+    "password": os.getenv("DB_PASSWORD", "8964"), # REMEMBER TO UPDATE THIS!
     "host": os.getenv("DB_HOST", "localhost"),
     "port": os.getenv("DB_PORT", "5432"),
     "database": os.getenv("DB_NAME", "credit_risk_db")
