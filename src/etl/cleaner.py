@@ -92,7 +92,6 @@ class DataCleaner:
         # Handle specific strings
         df['emp_length'] = df['emp_length'].str.replace('< 1 year', '0', regex=False)
         df['emp_length'] = df['emp_length'].str.replace('10+ years', '10', regex=False)
-        df['emp_length'] = df['emp_length'].str.replace('n/a', np.nan, regex=False)
 
         # Extract numbers (e.g., "3 years" -> "3")
         df['emp_length'] = df['emp_length'].str.extract(r'(\d+)')[0]
@@ -168,13 +167,16 @@ class DataCleaner:
         for col in num_cols:
             if df[col].isnull().any():
                 median_val = df[col].median()
-                df[col].fillna(median_val, inplace=True)
+                # FIX: Reassign instead of inplace to avoid ChainedAssignmentError
+                df[col] = df[col].fillna(median_val)
 
         # Fill Categorical with 'Unknown'
-        cat_cols = df.select_dtypes(include=['object']).columns
+        # FIX: Include 'string' to handle future Pandas versions and silence warning
+        cat_cols = df.select_dtypes(include=['object', 'string']).columns
         for col in cat_cols:
             if df[col].isnull().any():
-                df[col].fillna('Unknown', inplace=True)
+                # FIX: Reassign instead of inplace
+                df[col] = df[col].fillna('Unknown')
 
         return df
 
