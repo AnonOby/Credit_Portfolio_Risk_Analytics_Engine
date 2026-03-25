@@ -153,12 +153,14 @@ class PortfolioDataLoader:
             )
 
             # 4. Load to Database
-            # 🚀 FIX: Removed 'method="multi"' to prevent "Packet too large" SQL errors
+            # 🚀 OPTIMIZATION: Re-enabled 'method=multi' because we reduced chunksize to 10000.
+            # This is much faster (bulk insert) and safe now.
             chunk_enriched.to_sql(
                 'loans_master',
                 self.engine,
                 if_exists='append',
-                index=False
+                index=False,
+                method='multi'
             )
 
             print(f"   -> Processed and uploaded chunk {chunk_counter} ({chunksize} rows)")
