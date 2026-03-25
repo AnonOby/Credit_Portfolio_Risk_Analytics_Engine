@@ -52,7 +52,7 @@ class DataExtractor:
                 chunk_iterator = pd.read_csv(
                     self.file_path,
                     chunksize=chunksize,
-                    low_memory=False, # Disable low_memory to handle mixed types better initially
+                    low_memory=True,
                     encoding="utf-8",
                     on_bad_lines="warn"
                 )
