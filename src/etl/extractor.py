@@ -52,9 +52,11 @@ class DataExtractor:
                 chunk_iterator = pd.read_csv(
                     self.file_path,
                     chunksize=chunksize,
-                    low_memory=True,
-                    encoding="utf-8",
-                    on_bad_lines="warn"
+                    engine='python',  # 🚀 FIX: Force Python engine (slower but won't hang)
+                    sep=',',  # 🚀 FIX: Explicit separator
+                    encoding="utf-8",  # Try utf-8 first, if fails change to 'latin-1'
+                    on_bad_lines="skip",  # 🚀 FIX: Skip bad lines silently
+                    quoting=3  # 🚀 FIX: Ignore all quotes (safer for messy LC data)
                 )
 
                 for chunk in chunk_iterator:
