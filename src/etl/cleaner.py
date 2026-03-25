@@ -59,6 +59,9 @@ class DataCleaner:
         # We keep only the most relevant columns for risk modeling
         df = self._select_relevant_columns(df)
 
+        # This eliminates the "PerformanceWarning" and stabilizes speed
+        df = df.copy()
+
         return df
 
     def _clean_percentage_cols(self, df):
