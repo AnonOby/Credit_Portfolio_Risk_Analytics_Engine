@@ -180,4 +180,4 @@ class PortfolioDataLoader:
 # --- Test Block ---
 if __name__ == "__main__":
     loader = PortfolioDataLoader()
-    loader.run()  # ⚡️ Start the engine!
+    loader.run()  # ⚡️ Start the engine
