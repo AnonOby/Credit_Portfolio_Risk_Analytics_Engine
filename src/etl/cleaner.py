@@ -40,6 +40,9 @@ class DataCleaner:
         """
         Apply the full cleaning pipeline to a DataFrame chunk.
         """
+        # 0. Validate IDs (Remove footers/headers) - DO THIS FIRST!
+        df = self._validate_ids(df)
+
         # 1. Clean Percentage Columns
         df = self._clean_percentage_cols(df)
 
@@ -61,6 +64,35 @@ class DataCleaner:
 
         # This eliminates the "PerformanceWarning" and stabilizes speed
         df = df.copy()
+
+        return df
+
+    def _validate_ids(self, df):
+        """
+        Filters out non-data rows like headers or footers.
+        Lending Club CSVs often contain summary rows at the bottom (e.g., "Total amount funded...").
+        These must be removed before database insertion.
+        """
+        if 'id' not in df.columns:
+            return df
+
+        original_count = len(df)
+
+        # Ensure ID is string to check for content
+        ids = df['id'].astype(str)
+
+        # 1. ID must be purely numeric digits
+        # 2. ID must NOT contain footer keywords like "Total", "Policy", "issued"
+        valid_mask = (
+                ids.str.contains(r'^\d+$', regex=True, na=False) &
+                ~ids.str.contains('Total|Policy|issued|Loans', case=False, na=False)
+        )
+
+        df = df[valid_mask].copy()
+
+        dropped_count = original_count - len(df)
+        if dropped_count > 0:
+            print(f"   🧹 Cleaner: Detected and dropped {dropped_count} footer/summary rows.")
 
         return df
 
