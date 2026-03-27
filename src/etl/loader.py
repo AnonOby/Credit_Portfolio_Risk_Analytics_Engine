@@ -36,33 +36,46 @@ class PortfolioDataLoader:
         Execute the full pipeline.
         """
         try:
-            # 🚀 CRITICAL FIX: Force Drop Table at the very beginning
-            # This ensures we are clearing the table used by THIS specific engine.
+            # ---------------------------------------------------------
+            # STEP 0: INITIALIZE DATABASE CONNECTION (Do this FIRST!)
+            # ---------------------------------------------------------
+            print("🔌 Step 0/5: Connecting to Database...")
+            self.engine = get_engine()
+            if not self.engine:
+                raise ConnectionError(
+                    "Failed to connect to database. Check config.py and ensure PostgreSQL is running.")
+            print("✅ Database connection established.")
+
+            # ---------------------------------------------------------
+            # STEP 0.5: HARD RESET TABLE (Clear old data)
+            # ---------------------------------------------------------
             print("🔥 Force-dropping table to ensure clean state...")
             with self.engine.connect() as conn:
                 conn.execute(text("DROP TABLE IF EXISTS loans_master;"))
                 conn.commit()
-            print("✅ Table dropped. Starting from absolute zero.")
+            print("✅ Old table dropped. Starting fresh.")
 
-            # Step 1: Load Census Data into Memory
-            print("📊 Step 1/5: Loading Master Census Data...")
+            # ---------------------------------------------------------
+            # STEP 1: Load Census Data into Memory
+            # ---------------------------------------------------------
+            print("📊 Step 2/5: Loading Master Census Data...")
             self._load_census_reference()
 
-            # Step 2: Initialize Database Connection
-            print("🔌 Step 2/5: Connecting to Database...")
-            self.engine = get_engine()
-            if not self.engine:
-                raise ConnectionError("Failed to connect to database.")
-
-            # Step 3: Setup Database Table
-            print("🛠️ Step 3/5: Resetting Database Table...")
+            # ---------------------------------------------------------
+            # STEP 2: Setup Database Table (Schema Creation)
+            # ---------------------------------------------------------
+            print("🛠️ Step 3/5: Resetting Database Table Schema...")
             self._reset_database_table()
 
-            # Step 4: Process and Load Loan Data in Chunks
+            # ---------------------------------------------------------
+            # STEP 3: Process and Load Loan Data in Chunks
+            # ---------------------------------------------------------
             print("🚀 Step 4/5: Processing Loan Data (This takes time)...")
             self._process_loan_chunks()
 
-            # Step 5: Verify Data
+            # ---------------------------------------------------------
+            # STEP 4: Verify Data
+            # ---------------------------------------------------------
             print("✅ Step 5/5: Verifying Data...")
             self._verify_upload()
 
