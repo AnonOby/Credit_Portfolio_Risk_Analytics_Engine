@@ -2,6 +2,8 @@ import gc  # NEW: Garbage collector interface
 import pandas as pd
 import sys
 import os
+import gc
+from sqlalchemy import text
 
 # Add project root to path (Safety net if Sources Root isn't set)
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
@@ -34,6 +36,14 @@ class PortfolioDataLoader:
         Execute the full pipeline.
         """
         try:
+            # 🚀 CRITICAL FIX: Force Drop Table at the very beginning
+            # This ensures we are clearing the table used by THIS specific engine.
+            print("🔥 Force-dropping table to ensure clean state...")
+            with self.engine.connect() as conn:
+                conn.execute(text("DROP TABLE IF EXISTS loans_master;"))
+                conn.commit()
+            print("✅ Table dropped. Starting from absolute zero.")
+
             # Step 1: Load Census Data into Memory
             print("📊 Step 1/5: Loading Master Census Data...")
             self._load_census_reference()
