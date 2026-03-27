@@ -4,6 +4,7 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 from src.database.connection import get_engine
+from sqlalchemy import text  # <--- 🚀 新增这行导入
 
 
 def hard_reset():
@@ -16,8 +17,8 @@ def hard_reset():
 
     try:
         with engine.connect() as conn:
-            # Delete the table permanently
-            conn.execute("DROP TABLE IF EXISTS loans_master;")
+            # 🚀 修改这里：用 text() 包裹 SQL 语句
+            conn.execute(text("DROP TABLE IF EXISTS loans_master;"))
             conn.commit()
         print("✅ Table 'loans_master' has been DROPPED successfully.")
         print("🧹 The database is now clean.")
