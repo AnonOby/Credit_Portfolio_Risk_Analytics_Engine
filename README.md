@@ -11,9 +11,9 @@
     <a href="#key-findings">Key Findings</a> •
     <a href="#project-overview">Overview</a> •
     <a href="#tech-stack">Tech Stack</a> •
-    <a href="data-sources">Data Sources</a> •
+    <a href="#data-sources">Data Sources</a> •
     <a href="#architecture">Architecture</a> •
-    <a href="repository-structure">Repository Structure</a> •
+    <a href="#repository-structure">Repository Structure</a> •
     <a href="#run-locally">Run Locally</a> •
     <a href="#methodology">Methodology</a> •
     <a href="#visualization-preview">Visualization Preview</a> •
