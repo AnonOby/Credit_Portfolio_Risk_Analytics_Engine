@@ -1,28 +1,35 @@
+import gc
 import pandas as pd
 import sys
 import os
-import gc
 from sqlalchemy import text
 
-# Add project root to path (Safety net if Sources Root isn't set)
+# Add project root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
-# Import modules
-# Note: If you marked 'src' as Sources Root, these imports will work perfectly
 from src.etl.extractor import DataExtractor
 from src.etl.cleaner import DataCleaner
 from src.database.connection import get_engine
 import config
 
+# ---------------------------------------------------------
+# TEST MODE SETTINGS
+# ---------------------------------------------------------
+# Set to True for quick testing (process only first N chunks)
+# Set to False for full production run
+TEST_MODE = True
+MAX_TEST_CHUNKS = 5  # Number of chunks to process in test mode
+
 
 class PortfolioDataLoader:
     """
     Orchestrates the ETL pipeline:
-    1. Loads processed Census data (Master Lookup).
-    2. Extracts Loan Data in chunks.
-    3. Cleans Loan Data.
-    4. Merges Loan + Census.
-    5. Loads into PostgreSQL.
+
+    1. Loads processed Census data (Master Lookup)
+    2. Extracts Loan Data in chunks
+    3. Cleans Loan Data
+    4. Merges Loan + Census (Enrichment)
+    5. Loads into PostgreSQL
     """
 
     def __init__(self):
@@ -32,192 +39,233 @@ class PortfolioDataLoader:
 
     def run(self):
         """
-        Execute the full pipeline.
+        Execute the full ETL pipeline.
         """
         try:
-            # ---------------------------------------------------------
-            # STEP 0: INITIALIZE DATABASE CONNECTION (Do this FIRST!)
-            # ---------------------------------------------------------
+            # -------------------------------------------------
+            # STEP 0: Initialize Database Connection
+            # -------------------------------------------------
             print("🔌 Step 0/5: Connecting to Database...")
             self.engine = get_engine()
             if not self.engine:
                 raise ConnectionError(
-                    "Failed to connect to database. Check config.py and ensure PostgreSQL is running.")
+                    "Failed to connect to database. Check config.py and ensure PostgreSQL is running."
+                )
             print("✅ Database connection established.")
 
-            # ---------------------------------------------------------
-            # 🔍 DIAGNOSTIC: PRINT THE URL WE ARE CONNECTING TO
-            # ---------------------------------------------------------
-            print(f"🔍 DIAGNOSTIC: We are connected to URL -> {self.engine.url}")
-
-            # ---------------------------------------------------------
-            # STEP 0.5: HARD RESET TABLE (Clear old data)
-            # ---------------------------------------------------------
+            # -------------------------------------------------
+            # STEP 0.5: Hard Reset Table (Clear old data)
+            # -------------------------------------------------
             print("🔥 Force-dropping table to ensure clean state...")
             with self.engine.connect() as conn:
                 conn.execute(text("DROP TABLE IF EXISTS loans_master;"))
                 conn.commit()
             print("✅ Old table dropped. Starting fresh.")
 
-            # ---------------------------------------------------------
-            # 🔍 DIAGNOSTIC: CHECK WHAT TABLES EXIST NOW
-            # ---------------------------------------------------------
-            with self.engine.connect() as conn:
-                result = conn.execute(text("SELECT tablename FROM pg_tables WHERE schemaname = 'public';"))
-                tables = result.fetchall()
-                print(f"🔍 DIAGNOSTIC: Tables currently in 'public' schema: {[t[0] for t in tables]}")
-
-            # ---------------------------------------------------------
+            # -------------------------------------------------
             # STEP 1: Load Census Data into Memory
-            # ---------------------------------------------------------
-            print("📊 Step 2/5: Loading Master Census Data...")
+            # -------------------------------------------------
+            print("📊 Step 1/5: Loading Master Census Data...")
             self._load_census_reference()
 
-            # ---------------------------------------------------------
+            # -------------------------------------------------
             # STEP 2: Setup Database Table (Schema Creation)
-            # ---------------------------------------------------------
-            print("🛠️ Step 3/5: Resetting Database Table Schema...")
+            # -------------------------------------------------
+            print("🛠️ Step 2/5: Creating Database Table Schema...")
             self._reset_database_table()
 
-            # ---------------------------------------------------------
+            # -------------------------------------------------
             # STEP 3: Process and Load Loan Data in Chunks
-            # ---------------------------------------------------------
-            print("🚀 Step 4/5: Processing Loan Data (This takes time)...")
-            self._process_loan_chunks()
+            # -------------------------------------------------
+            if TEST_MODE:
+                msg = f"🚀 Step 3/5: Processing Loan Data (TEST MODE - {MAX_TEST_CHUNKS} chunks)..."
+            else:
+                msg = "🚀 Step 3/5: Processing Loan Data (PRODUCTION MODE - Full dataset)..."
+            print(msg)
 
-            # ---------------------------------------------------------
+            self._process_loan_chunks(limit=MAX_TEST_CHUNKS)
+
+            # -------------------------------------------------
             # STEP 4: Verify Data
-            # ---------------------------------------------------------
-            print("✅ Step 5/5: Verifying Data...")
+            # -------------------------------------------------
+            print("✅ Step 4/5: Verifying Data...")
             self._verify_upload()
 
-            print("\n" + "=" * 50)
-            print("🏆 ETL PIPELINE COMPLETED SUCCESSFULLY! 🏆")
-            print("=" * 50)
+            # -------------------------------------------------
+            # COMPLETION SUMMARY
+            # -------------------------------------------------
+            print("\n" + "=" * 60)
+            if TEST_MODE:
+                print(f"⚡ TEST MODE COMPLETE: Processed {MAX_TEST_CHUNKS} chunks.")
+                print("   Set TEST_MODE = False in loader.py for full production run.")
+            else:
+                print("🏆 PRODUCTION MODE COMPLETE: Full dataset processed.")
+            print("=" * 60)
 
         except Exception as e:
-            print("\n" + "=" * 50)
+            print("\n" + "=" * 60)
             print(f"❌ Pipeline Failed: {e}")
-            print("=" * 50)
-            print("🐛 Detailed Error Traceback (For Debugging):")
-
-            # This will show us the EXACT SQL error (e.g. connection closed, duplicate key, etc.)
+            print("=" * 60)
+            print("🐛 Detailed Error Traceback:")
             import traceback
             traceback.print_exc()
 
     def _load_census_reference(self):
         """
         Load the processed parquet file containing economic features.
+        Truncates ZIP codes to 3-digit prefix for matching with loan data.
         """
         if not config.PROCESSED_CENSUS_FILE.exists():
             raise FileNotFoundError(
-                f"Census data not found at {config.PROCESSED_CENSUS_FILE}. Please run census_processor.py first.")
+                f"Census data not found at {config.PROCESSED_CENSUS_FILE}. "
+                f"Please run census_processor.py first."
+            )
 
         self.census_df = pd.read_parquet(config.PROCESSED_CENSUS_FILE)
 
         # Ensure zip_code is string
         self.census_df['zip_code'] = self.census_df['zip_code'].astype(str)
 
-        # 🚀 FIX: Truncate Census Zip to first 3 digits to match Lending Club masked format (e.g., '00601' -> '006')
+        # Truncate Census ZIP to first 3 digits to match Lending Club format
+        # Example: '00601' -> '006'
         self.census_df['zip_code'] = self.census_df['zip_code'].str[:3]
 
-        # Optimize memory
+        # Optimize memory: downcast float64 to float32
         for col in self.census_df.select_dtypes(include=['float64']).columns:
             self.census_df[col] = pd.to_numeric(self.census_df[col], downcast='float')
 
-        print(f"   -> Loaded {len(self.census_df)} Zip Code regions (Truncated to 3-digit prefix).")
+        print(f"   -> Loaded {len(self.census_df)} ZIP code regions (3-digit prefix)")
 
     def _reset_database_table(self):
         """
-        Drop the table if it exists to ensure a clean run.
+        Create the loans_master table with correct schema.
+        Drops existing table if present.
         """
-        # We write an empty dataframe with the correct schema to create the table
+        # Get sample schema by processing one row
         sample_df = self._get_sample_schema()
 
-        # if_exists='replace' will drop and recreate
+        # Write empty DataFrame with schema to create table
         sample_df.head(0).to_sql(
             'loans_master',
             self.engine,
             if_exists='replace',
             index=False
         )
-        print("   -> Table 'loans_master' is ready.")
+        print("   -> Table 'loans_master' schema created successfully.")
 
     def _get_sample_schema(self):
         """
-        Create a dummy DataFrame to establish the SQL Schema.
+        Create a sample DataFrame to establish SQL schema.
+        Merges loan sample with census data to get all columns.
         """
-        extractor = DataExtractor(config.RAW_LOAN_DATA_FILE)
-        # Just read first 10 rows to get columns
-        sample_chunk = next(extractor.get_chunks(chunksize=10))
-        cleaned_sample = self.cleaner.execute_pipeline(sample_chunk)
+        sample_df = self._get_cleaned_sample()
+
+        # Truncate loan zip_code to 3 digits for merge
+        if 'zip_code' in sample_df.columns:
+            sample_df['zip_code'] = sample_df['zip_code'].astype(str).str[:3]
 
         # Merge with census to get final schema
-        if 'zip_code' in cleaned_sample.columns:
-            cleaned_sample['zip_code'] = cleaned_sample['zip_code'].astype(str)
-
-        merged_sample = cleaned_sample.merge(
+        merged_sample = sample_df.merge(
             self.census_df,
             on='zip_code',
             how='left'
         )
         return merged_sample
 
-    def _process_loan_chunks(self):
+    def _get_cleaned_sample(self):
         """
-        Main loop: Extract -> Clean -> Merge -> Load.
+        Helper method: read and clean 1 row to establish schema.
+        """
+        extractor = DataExtractor(config.RAW_LOAN_DATA_FILE)
+
+        # Read just 1 row
+        sample_chunk = next(extractor.get_chunks(chunksize=1))
+
+        # Clean using DataCleaner
+        return self.cleaner.execute_pipeline(sample_chunk)
+
+    def _process_loan_chunks(self, limit=None):
+        """
+        Main processing loop: Extract -> Clean -> Merge -> Load.
+
+        Args:
+            limit: Maximum number of chunks to process (for testing)
         """
         extractor = DataExtractor(config.RAW_LOAN_DATA_FILE)
         chunksize = 10000
-
         chunk_counter = 0
 
         for chunk in extractor.get_chunks(chunksize=chunksize):
             chunk_counter += 1
 
-            # 1. Clean
+            # -----------------------------------------
+            # 1. Clean the chunk
+            # -----------------------------------------
             chunk_clean = self.cleaner.execute_pipeline(chunk)
 
+            # -----------------------------------------
             # 2. Prepare Zip Code for Merge
+            # -----------------------------------------
             if 'zip_code' in chunk_clean.columns:
-                # 🚀 FIX: Truncate to first 3 digits to match Census (e.g., '967xx' -> '967')
                 chunk_clean['zip_code'] = chunk_clean['zip_code'].astype(str).str[:3]
             else:
-                chunk_clean['zip_code'] = '00000'
+                # Fallback if zip_code missing
+                chunk_clean['zip_code'] = '000'
 
+            # -----------------------------------------
             # 3. Merge with Census (Enrichment)
+            # -----------------------------------------
             chunk_enriched = chunk_clean.merge(
                 self.census_df,
                 on='zip_code',
                 how='left'
             )
 
+            # -----------------------------------------
             # 4. Load to Database
-            # 🚀 OPTIMIZATION: Re-enabled 'method=multi' because we reduced chunksize to 10000.
-            # This is much faster (bulk insert) and safe now.
+            # -----------------------------------------
             chunk_enriched.to_sql(
                 'loans_master',
                 self.engine,
                 if_exists='append',
-                index=False,
+                index=False
             )
 
-            print(f"   -> Processed and uploaded chunk {chunk_counter} ({chunksize} rows)")
+            print(f"   -> Chunk {chunk_counter}: Uploaded {len(chunk_enriched):,} rows")
 
-            # This prevents memory buildup and freezing
+            # -----------------------------------------
+            # 5. Test Mode Break Condition
+            # -----------------------------------------
+            if TEST_MODE and limit and chunk_counter >= limit:
+                print(f"   ✅ TEST MODE: Reached limit of {limit} chunks.")
+                break
+
+            # Garbage Collection to free memory
             gc.collect()
 
     def _verify_upload(self):
         """
-        Quick query to check if data landed in DB.
+        Query database to verify data was loaded successfully.
         """
-        # Using pandas read_sql to execute a count query
-        df_count = pd.read_sql("SELECT COUNT(*) as total_rows FROM loans_master", self.engine)
+        df_count = pd.read_sql(
+            "SELECT COUNT(*) as total_rows FROM loans_master",
+            self.engine
+        )
         count = df_count['total_rows'].iloc[0]
-        print(f"   -> Total rows in Database: {count}")
+        print(f"   -> Total rows in database: {count:,}")
+
+        # Also show sample of data
+        df_sample = pd.read_sql(
+            "SELECT id, loan_amnt, grade, zip_code FROM loans_master LIMIT 5",
+            self.engine
+        )
+        print("\n   📋 Sample records:")
+        print(df_sample.to_string(index=False))
 
 
-# --- Test Block ---
+# ---------------------------------------------------------
+# Main Execution Entry Point
+# ---------------------------------------------------------
 if __name__ == "__main__":
     loader = PortfolioDataLoader()
-    loader.run()  # ⚡️ Start the engine
+    loader.run()
