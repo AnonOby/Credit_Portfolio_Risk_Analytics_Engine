@@ -7,12 +7,21 @@
     <strong>End-to-End Credit Risk Modeling with PostgreSQL, Python & Vasicek Framework</strong>
   </p>
 
- <p align="center">
+  <p align="center">
     <a href="#key-findings">Key Findings</a> •
     <a href="#project-overview">Overview</a> •
     <a href="#tech-stack">Tech Stack</a> •
+    <a href="data-sources">Data Sources</a> •
     <a href="#architecture">Architecture</a> •
-    <a href="#run-locally">Run Locally</a>
+    <a href="repository-structure">Repository Structure</a> •
+    <a href="#run-locally">Run Locally</a> •
+    <a href="#methodology">Methodology</a> •
+    <a href="#visualization-preview">Visualization Preview</a> •
+    <a href="#lessons-learned">Lessons Learned</a> •
+    <a href="#limitations-and-future-improvements">Limitations & Future Improvements</a> •
+    <a href="#reference">Reference</a> •
+    <a href="#contribution">Contribution</a> •
+    <a href="#License">License</a>
   </p>
 
   <p align="center">
@@ -24,7 +33,7 @@
 </div>
 
 ---
-
+<a name="key-findings"></a>
 ## 🔍 Key Findings
 
 > **High-risk segments show 2.7x higher default rates compared to portfolio average, indicating critical need for enhanced credit screening in subprime segments.**
@@ -40,7 +49,7 @@
 **Economic Insight**: Borrowers in regions with negative income growth (2023→2024) exhibit 1.8x higher default probability, validating the incorporation of macroeconomic factors into credit scoring models.
 
 ---
-
+<a name="project-overview"></a>
 ## 📌 Project Overview
 
 This project builds a **production-grade credit risk analytics engine** that processes **2.26 million loan records** from Lending Club, enriched with US Census economic indicators.
@@ -64,7 +73,7 @@ This project builds a **production-grade credit risk analytics engine** that pro
 - **Portfolio Optimization**: Risk-adjusted return analysis by segment
 
 ---
-
+<a name="tech-stack"></a>
 ## 🛠️ Tech Stack
 
 | Category | Technologies |
@@ -77,7 +86,7 @@ This project builds a **production-grade credit risk analytics engine** that pro
 | **Reporting** | ReportLab (PDF generation) |
 
 ---
-
+<a name="data-sources"></a>
 ## 🗂️ Data Sources
 
 | Dataset | Source | Records | Key Features |
@@ -88,7 +97,7 @@ This project builds a **production-grade credit risk analytics engine** that pro
 **Feature Engineering**: Census economic indicators are merged with loan data via 3-digit ZIP prefix, enabling macroeconomic risk factor analysis.
 
 ---
-
+<a name="architecture"></a>
 ## 🏗️ Architecture
 
 ```
@@ -142,7 +151,7 @@ This project builds a **production-grade credit risk analytics engine** that pro
 ```
 
 ---
-
+<a name="repository-structure"></a>
 ## 📁 Repository Structure
 
 ```
@@ -211,7 +220,7 @@ Credit-Portfolio-Risk-Analytics-Engine/
 ```
 
 ---
-
+<a name="run-locally"></a>
 ## 🚀 Run Locally
 
 ### Prerequisites
@@ -266,7 +275,7 @@ streamlit run app.py
 ```
 
 ---
-
+<a name="methodology"></a>
 ## 📊 Methodology
 
 ### Probability of Default (PD)
@@ -330,7 +339,7 @@ VaR @ 99.9% confidence level
 ```
 
 ---
-
+<a name="visualization-preview"></a>
 ## 📈 Visualization Preview
 
 ### Loss Distribution
@@ -346,7 +355,7 @@ VaR @ 99.9% confidence level
 ![Power BI](assets/powerbi_dashboard.png)
 
 ---
-
+<a name="lessons-learned"></a>
 ## 🧪 Lessons Learned
 
 1. **Data Quality Matters**: 22 footer/summary rows were detected and removed during cleaning - always validate raw data before analysis
@@ -358,7 +367,7 @@ VaR @ 99.9% confidence level
 4. **Model Interpretability**: For credit risk applications, feature importance and SHAP values are critical for regulatory compliance and stakeholder communication
 
 ---
-
+<a name="limitations-and-future-improvements"></a>
 ## ⚠️ Limitations & Future Improvements
 
 | Limitation | Potential Solution |
@@ -369,7 +378,7 @@ VaR @ 99.9% confidence level
 | Limited to Lending Club data | Extend to other loan portfolios |
 
 ---
-
+<a name="reference"></a>
 ## 📚 References
 
 - Chatterjee, S. (2015). *Modelling Credit Risk*. Bank of England CCBS Handbook No. 34
@@ -377,13 +386,13 @@ VaR @ 99.9% confidence level
 - Vasicek, O. (2002). The distribution of loan portfolio value. *Risk*
 
 ---
-
+<a name="contribution"></a>
 ## 🤝 Contribution
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
 ---
-
+<a name="license"></a>
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
