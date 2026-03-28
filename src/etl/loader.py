@@ -1,4 +1,3 @@
-import gc  # NEW: Garbage collector interface
 import pandas as pd
 import sys
 import os
@@ -47,6 +46,11 @@ class PortfolioDataLoader:
             print("✅ Database connection established.")
 
             # ---------------------------------------------------------
+            # 🔍 DIAGNOSTIC: PRINT THE URL WE ARE CONNECTING TO
+            # ---------------------------------------------------------
+            print(f"🔍 DIAGNOSTIC: We are connected to URL -> {self.engine.url}")
+
+            # ---------------------------------------------------------
             # STEP 0.5: HARD RESET TABLE (Clear old data)
             # ---------------------------------------------------------
             print("🔥 Force-dropping table to ensure clean state...")
@@ -54,6 +58,14 @@ class PortfolioDataLoader:
                 conn.execute(text("DROP TABLE IF EXISTS loans_master;"))
                 conn.commit()
             print("✅ Old table dropped. Starting fresh.")
+
+            # ---------------------------------------------------------
+            # 🔍 DIAGNOSTIC: CHECK WHAT TABLES EXIST NOW
+            # ---------------------------------------------------------
+            with self.engine.connect() as conn:
+                result = conn.execute(text("SELECT table name FROM pg_tables WHERE schema name = 'public';"))
+                tables = result.fetchall()
+                print(f"🔍 DIAGNOSTIC: Tables currently in 'public' schema: {[t[0] for t in tables]}")
 
             # ---------------------------------------------------------
             # STEP 1: Load Census Data into Memory
