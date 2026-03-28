@@ -8,11 +8,11 @@
   </p>
 
   <p align="center">
-    <a href="#-key-findings">Key Findings</a> •
-    <a href="#-project-overview">Overview</a> •
-    <a href="#-tech-stack">Tech Stack</a> •
-    <a href="#-architecture">Architecture</a> •
-    <a href="#-run-locally">Run Locally</a>
+    <a href="#key-findings">Key Findings</a> •
+    <a href="#project-overview">Overview</a> •
+    <a href="#tech-stack">Tech Stack</a> •
+    <a href="#architecture">Architecture</a> •
+    <a href="#run-locally">Run Locally</a>
   </p>
 
   <p align="center">
