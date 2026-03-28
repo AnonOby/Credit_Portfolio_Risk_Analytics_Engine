@@ -7,7 +7,7 @@
     <strong>End-to-End Credit Risk Modeling with PostgreSQL, Python & Vasicek Framework</strong>
   </p>
 
-  <p align="center">
+ <p align="center">
     <a href="#key-findings">Key Findings</a> •
     <a href="#project-overview">Overview</a> •
     <a href="#tech-stack">Tech Stack</a> •
