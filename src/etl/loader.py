@@ -63,7 +63,7 @@ class PortfolioDataLoader:
             # 🔍 DIAGNOSTIC: CHECK WHAT TABLES EXIST NOW
             # ---------------------------------------------------------
             with self.engine.connect() as conn:
-                result = conn.execute(text("SELECT table name FROM pg_tables WHERE schema name = 'public';"))
+                result = conn.execute(text("SELECT tablename FROM pg_tables WHERE schemaname = 'public';"))
                 tables = result.fetchall()
                 print(f"🔍 DIAGNOSTIC: Tables currently in 'public' schema: {[t[0] for t in tables]}")
 
