@@ -18,7 +18,7 @@ import config
 # Set to True for quick testing (process only first N chunks)
 # Set to False for full production run
 TEST_MODE = True
-MAX_TEST_CHUNKS = 5  # Number of chunks to process in test mode
+MAX_TEST_CHUNKS = 2  # Number of chunks to process in test mode
 
 
 class PortfolioDataLoader:
@@ -112,8 +112,11 @@ class PortfolioDataLoader:
 
     def _load_census_reference(self):
         """
-        Load the processed parquet file containing economic features.
-        Truncates ZIP codes to 3-digit prefix for matching with loan data.
+        Load and aggregate Census data by 3-digit ZIP prefix.
+
+        The Census data contains 5-digit ZIP codes, but Lending Club only provides
+        the first 3 digits (e.g., '006xx'). We truncate and aggregate Census data
+        to match this format, preventing one-to-many merge explosion.
         """
         if not config.PROCESSED_CENSUS_FILE.exists():
             raise FileNotFoundError(
@@ -126,15 +129,24 @@ class PortfolioDataLoader:
         # Ensure zip_code is string
         self.census_df['zip_code'] = self.census_df['zip_code'].astype(str)
 
-        # Truncate Census ZIP to first 3 digits to match Lending Club format
-        # Example: '00601' -> '006'
+        # Truncate to 3-digit prefix
         self.census_df['zip_code'] = self.census_df['zip_code'].str[:3]
+
+        # ---------------------------------------------------------
+        # KEY FIX: Aggregate by 3-digit prefix
+        # Multiple 5-digit ZIPs map to the same 3-digit prefix,
+        # so we take the mean to avoid one-to-many merge explosion.
+        # ---------------------------------------------------------
+        # Define columns to aggregate (all numeric feature columns)
+        agg_cols = [col for col in self.census_df.columns if col != 'zip_code']
+
+        self.census_df = self.census_df.groupby('zip_code', as_index=False)[agg_cols].mean()
 
         # Optimize memory: downcast float64 to float32
         for col in self.census_df.select_dtypes(include=['float64']).columns:
             self.census_df[col] = pd.to_numeric(self.census_df[col], downcast='float')
 
-        print(f"   -> Loaded {len(self.census_df)} ZIP code regions (3-digit prefix)")
+        print(f"   -> Loaded {len(self.census_df)} ZIP code regions (3-digit prefix, aggregated)")
 
     def _reset_database_table(self):
         """
