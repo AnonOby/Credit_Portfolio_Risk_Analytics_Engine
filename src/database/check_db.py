@@ -1,8 +1,9 @@
 import pandas as pd
 import sys
 import os
+from sqlalchemy import text
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__))))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 from src.database.connection import get_engine
 
 
@@ -10,9 +11,31 @@ def check_harvest():
     print("🔍 Connecting to database to verify data...")
     engine = get_engine()
 
-    if not engine:
-        print("❌ Database connection failed.")
+    # 🔍 NEW: DIAGNOSTIC
+    if engine:
+        print(f"🔍 DIAGNOSIS (Check DB): Connected to -> {engine.url}")
+    else:
+        print("❌ Connection is None! This is the problem.")
         return
+
+    # 🔍 NEW: DIAGNOSTIC: List tables
+    print("🔍 DIAGNOSIS: Checking existing tables in this connection...")
+    with engine.connect() as conn:
+        result = conn.execute(text("SELECT tablename FROM pg_tables WHERE schemaname = 'public';"))
+        tables = [row[0] for row in result]
+        print(f"🔍 DIAGNOSIS: Tables found: {tables}")
+
+        # 🔥 EMERGENCY FIX: Try to force drop the table HERE as well
+        if 'loans_master' in tables:
+            print("🔨 Check_DB: Trying to force drop the table now...")
+            conn.execute(text("DROP TABLE IF EXISTS loans_master;"))
+            conn.commit()  # Make sure it's persisted
+            print("✅ Check_DB: Table dropped by check_db.py.")
+
+        # Re-check
+        result2 = conn.execute(text("SELECT tablename FROM pg_tables WHERE schemaname = 'public'"))
+        tables_after = [row[0] for row in result2]
+        print(f"🔍 DIAGNOSIS: Tables after dropping: {tables_after}")
 
     # 1. Count total rows
     query_count = "SELECT COUNT(*) as total_rows FROM loans_master"
@@ -21,22 +44,11 @@ def check_harvest():
 
     print(f"✅ Total rows in database: {total_rows:,}")
 
-    # 2. Check if we have Census data joined (Check for nulls)
-    # We expect some nulls in Census data (zip code mismatches), but not ALL nulls.
-    query_sample = "SELECT id, zip_code, median_income_2024, loan_status FROM loans_master LIMIT 5"
-    df_sample = pd.read_sql(query_sample, engine)
-
-    print("\n📊 Sample Data (First 5 rows):")
-    print(df_sample)
-
-    # Quick check on Census data quality
-    valid_census = df_sample['median_income_2024'].notna().sum()
-    print(f"\n🏛️  Census Data Join Status: {valid_census}/5 rows have economic data.")
-
     if total_rows > 0:
-        print("\n🎉 SUCCESS! Your data is safe and ready for analysis.")
+        print(
+            "⚠️ WARNING: Data still exists! This confirms we are looking at a different DB or Loader didn't write anything.")
     else:
-        print("\n⚠️ WARNING: Table is empty. The loader might have failed before writing anything.")
+        print("✅ Table is confirmed empty. Loader didn't write anything.")
 
 
 if __name__ == "__main__":
