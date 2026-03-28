@@ -17,7 +17,7 @@ import config
 # ---------------------------------------------------------
 # Set to True for quick testing (process only first N chunks)
 # Set to False for full production run
-TEST_MODE = True
+TEST_MODE = False
 MAX_TEST_CHUNKS = 2  # Number of chunks to process in test mode
 
 
