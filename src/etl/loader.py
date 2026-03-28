@@ -96,7 +96,12 @@ class PortfolioDataLoader:
             print("=" * 50)
 
         except Exception as e:
-            print(f"\n❌ Pipeline Failed: {e}")
+            print("\n" + "=" * 50)
+            print(f"❌ Pipeline Failed: {e}")
+            print("=" * 50)
+            print("🐛 Detailed Error Traceback (For Debugging):")
+
+            # This will show us the EXACT SQL error (e.g. connection closed, duplicate key, etc.)
             import traceback
             traceback.print_exc()
 
