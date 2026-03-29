@@ -24,7 +24,7 @@ pd_by_grade AS (
             SUM(CASE
                 WHEN loan_status IN ('Charged Off', 'Default', 'Does not meet the credit policy. Status:Charged Off')
                 THEN 1 ELSE 0
-            END) * 1.0 / COUNT(*),
+            END) * 1.0 / COUNT(*)::numeric,
         4) AS pd
     FROM mature_loans
     GROUP BY grade
@@ -32,7 +32,7 @@ pd_by_grade AS (
 lgd_by_grade AS (
     SELECT
         grade,
-        ROUND(AVG(1 - (total_pymnt / funded_amnt)), 4) AS lgd
+        ROUND(AVG(1 - (total_pymnt / funded_amnt))::numeric, 4) AS lgd
     FROM loans_master
     WHERE loan_status IN ('Charged Off', 'Default', 'Does not meet the credit policy. Status:Charged Off')
     AND funded_amnt > 0
@@ -42,11 +42,11 @@ segment_metrics AS (
     SELECT
         m.grade,
         COUNT(*)                                    AS loan_count,
-        ROUND(AVG(m.funded_amnt), 2)               AS avg_ead,
-        ROUND(SUM(m.funded_amnt), 2)               AS total_exposure,
+        ROUND(AVG(m.funded_amnt)::numeric, 2)      AS avg_ead,
+        ROUND(SUM(m.funded_amnt)::numeric, 2)      AS total_exposure,
         p.pd,
         l.lgd,
-        ROUND(p.pd * l.lgd, 4)                     AS el_rate
+        ROUND((p.pd * l.lgd)::numeric, 4)          AS el_rate
     FROM mature_loans m
     JOIN pd_by_grade p ON m.grade = p.grade
     JOIN lgd_by_grade l ON m.grade = l.grade
@@ -55,12 +55,12 @@ segment_metrics AS (
 SELECT
     grade,
     loan_count,
-    ROUND(pd * 100, 2)                             AS pd_pct,
-    ROUND(lgd * 100, 2)                            AS lgd_pct,
+    ROUND((pd * 100)::numeric, 2)                   AS pd_pct,
+    ROUND((lgd * 100)::numeric, 2)                  AS lgd_pct,
     avg_ead,
     total_exposure,
-    ROUND(el_rate * avg_ead, 2)                    AS el_per_loan,
-    ROUND(el_rate * total_exposure, 2)             AS total_el,
-    ROUND(el_rate * 100, 4)                        AS portfolio_loss_rate_pct
+    ROUND((el_rate * avg_ead)::numeric, 2)          AS el_per_loan,
+    ROUND((el_rate * total_exposure)::numeric, 2)   AS total_el,
+    ROUND((el_rate * 100)::numeric, 4)              AS portfolio_loss_rate_pct
 FROM segment_metrics
 ORDER BY grade;
