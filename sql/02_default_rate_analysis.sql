@@ -26,12 +26,12 @@ SELECT
     grade,
     COUNT(*)                                        AS total_loans,
     SUM(is_default)                                 AS defaulted,
-    ROUND(100.0 * SUM(is_default) / COUNT(*), 2)   AS default_rate_pct,
-    ROUND(AVG(loan_amnt), 2)                        AS avg_loan_amount,
-    ROUND(AVG(int_rate), 2)                         AS avg_int_rate,
-    ROUND(AVG((fico_range_low + fico_range_high) / 2.0), 1) AS avg_fico,
-    ROUND(AVG(annual_inc), 2)                       AS avg_annual_income,
-    ROUND(AVG(dti), 2)                              AS avg_dti
+    ROUND(100.0 * SUM(is_default) / COUNT(*)::numeric, 2) AS default_rate_pct,
+    ROUND(AVG(loan_amnt)::numeric, 2)              AS avg_loan_amount,
+    ROUND(AVG(int_rate)::numeric, 2)               AS avg_int_rate,
+    ROUND(AVG((fico_range_low + fico_range_high) / 2.0)::numeric, 1) AS avg_fico,
+    ROUND(AVG(annual_inc)::numeric, 2)             AS avg_annual_income,
+    ROUND(AVG(dti)::numeric, 2)                    AS avg_dti
 FROM labeled
 GROUP BY grade
 ORDER BY grade;
@@ -60,7 +60,7 @@ SELECT
     term,
     COUNT(*)                                        AS total_loans,
     SUM(is_default)                                 AS defaulted,
-    ROUND(100.0 * SUM(is_default) / COUNT(*), 2)   AS default_rate_pct
+    ROUND(100.0 * SUM(is_default) / COUNT(*)::numeric, 2) AS default_rate_pct
 FROM labeled
 GROUP BY term
 ORDER BY term;
@@ -89,8 +89,8 @@ SELECT
     purpose,
     COUNT(*)                                        AS total_loans,
     SUM(is_default)                                 AS defaulted,
-    ROUND(100.0 * SUM(is_default) / COUNT(*), 2)   AS default_rate_pct,
-    ROUND(AVG(int_rate), 2)                         AS avg_int_rate
+    ROUND(100.0 * SUM(is_default) / COUNT(*)::numeric, 2) AS default_rate_pct,
+    ROUND(AVG(int_rate)::numeric, 2)               AS avg_int_rate
 FROM labeled
 GROUP BY purpose
 HAVING COUNT(*) >= 1000
@@ -121,7 +121,7 @@ SELECT
     home_ownership,
     COUNT(*)                                        AS total_loans,
     SUM(is_default)                                 AS defaulted,
-    ROUND(100.0 * SUM(is_default) / COUNT(*), 2)   AS default_rate_pct
+    ROUND(100.0 * SUM(is_default) / COUNT(*)::numeric, 2) AS default_rate_pct
 FROM labeled
 GROUP BY home_ownership
 ORDER BY default_rate_pct DESC;
@@ -166,10 +166,10 @@ SELECT
     fico_range_label,
     COUNT(*)                                        AS total_loans,
     SUM(is_default)                                 AS defaulted,
-    ROUND(100.0 * SUM(is_default) / COUNT(*), 2)   AS default_rate_pct
+    ROUND(100.0 * SUM(is_default) / COUNT(*)::numeric, 2) AS default_rate_pct
 FROM fico_labels
 WHERE fico_range_label IS NOT NULL
-GROUP BY fico_range_label
+GROUP BY fico_range_label, fico_bucket
 ORDER BY fico_bucket;
 
 
@@ -196,7 +196,7 @@ SELECT
     verification_status,
     COUNT(*)                                        AS total_loans,
     SUM(is_default)                                 AS defaulted,
-    ROUND(100.0 * SUM(is_default) / COUNT(*), 2)   AS default_rate_pct
+    ROUND(100.0 * SUM(is_default) / COUNT(*)::numeric, 2) AS default_rate_pct
 FROM labeled
 GROUP BY verification_status
 ORDER BY default_rate_pct DESC;
@@ -221,8 +221,8 @@ SELECT
     EXTRACT(YEAR FROM issue_d)::int                 AS issue_year,
     COUNT(*)                                        AS total_loans,
     SUM(is_default)                                 AS defaulted,
-    ROUND(100.0 * SUM(is_default) / COUNT(*), 2)   AS default_rate_pct,
-    ROUND(AVG(loan_amnt), 2)                        AS avg_loan_amount
+    ROUND(100.0 * SUM(is_default) / COUNT(*)::numeric, 2) AS default_rate_pct,
+    ROUND(AVG(loan_amnt)::numeric, 2)              AS avg_loan_amount
 FROM mature_loans
 GROUP BY EXTRACT(YEAR FROM issue_d)
 ORDER BY issue_year;
