@@ -27,7 +27,7 @@ pd_by_grade AS (
         ROUND(
             SUM(CASE WHEN loan_status IN ('Charged Off', 'Default',
                 'Does not meet the credit policy. Status:Charged Off') THEN 1 ELSE 0 END) * 1.0
-            / COUNT(*), 4) AS pd
+            / COUNT(*)::numeric, 4) AS pd
     FROM mature_loans
     GROUP BY grade
 ),
@@ -35,8 +35,8 @@ lgd_by_grade AS (
     SELECT
         grade,
         COUNT(*) AS defaulted_count,
-        ROUND(AVG(1 - (total_pymnt / funded_amnt)), 4) AS lgd,
-        ROUND(AVG(total_pymnt / funded_amnt), 4) AS recovery_rate
+        ROUND(AVG(1 - (total_pymnt / funded_amnt))::numeric, 4) AS lgd,
+        ROUND(AVG(total_pymnt / funded_amnt)::numeric, 4) AS recovery_rate
     FROM loans_master
     WHERE loan_status IN ('Charged Off', 'Default',
         'Does not meet the credit policy. Status:Charged Off')
@@ -48,13 +48,13 @@ el_calc AS (
         p.grade,
         p.total_loans,
         p.defaulted,
-        ROUND(p.pd * 100, 2) AS pd_pct,
-        ROUND(l.lgd * 100, 2) AS lgd_pct,
-        ROUND(l.recovery_rate * 100, 2) AS recovery_pct,
-        ROUND(AVG(m.funded_amnt), 2) AS avg_ead,
-        ROUND(SUM(m.funded_amnt), 2) AS total_exposure,
-        ROUND(p.pd * l.lgd * AVG(m.funded_amnt), 2) AS el_per_loan,
-        ROUND(p.pd * l.lgd * SUM(m.funded_amnt), 2) AS total_el
+        ROUND((p.pd * 100)::numeric, 2)              AS pd_pct,
+        ROUND((l.lgd * 100)::numeric, 2)              AS lgd_pct,
+        ROUND((l.recovery_rate * 100)::numeric, 2)    AS recovery_pct,
+        ROUND(AVG(m.funded_amnt)::numeric, 2)         AS avg_ead,
+        ROUND(SUM(m.funded_amnt)::numeric, 2)         AS total_exposure,
+        ROUND((p.pd * l.lgd * AVG(m.funded_amnt))::numeric, 2) AS el_per_loan,
+        ROUND((p.pd * l.lgd * SUM(m.funded_amnt))::numeric, 2) AS total_el
     FROM pd_by_grade p
     JOIN lgd_by_grade l ON p.grade = l.grade
     JOIN mature_loans m ON p.grade = m.grade
@@ -99,7 +99,7 @@ pd_by_tier AS (
         ROUND(
             SUM(CASE WHEN loan_status IN ('Charged Off', 'Default',
                 'Does not meet the credit policy. Status:Charged Off') THEN 1 ELSE 0 END) * 1.0
-            / COUNT(*), 4) AS pd
+            / COUNT(*)::numeric, 4) AS pd
     FROM mature_loans
     GROUP BY risk_tier
 ),
@@ -110,7 +110,7 @@ lgd_by_tier AS (
             WHEN grade IN ('C', 'D') THEN '2_Near-Prime (C-D)'
             WHEN grade IN ('E', 'F', 'G') THEN '3_Subprime (E-G)'
         END AS risk_tier,
-        ROUND(AVG(1 - (total_pymnt / funded_amnt)), 4) AS lgd
+        ROUND(AVG(1 - (total_pymnt / funded_amnt))::numeric, 4) AS lgd
     FROM loans_master
     WHERE loan_status IN ('Charged Off', 'Default',
         'Does not meet the credit policy. Status:Charged Off')
@@ -121,7 +121,7 @@ el_calc AS (
     SELECT
         m.risk_tier,
         COUNT(*) AS loan_count,
-        ROUND(SUM(m.funded_amnt), 2) AS total_exposure,
+        ROUND(SUM(m.funded_amnt)::numeric, 2)      AS total_exposure,
         p.pd,
         l.lgd
     FROM mature_loans m
@@ -133,10 +133,10 @@ SELECT
     risk_tier,
     loan_count,
     total_exposure,
-    ROUND(pd * 100, 2) AS pd_pct,
-    ROUND(lgd * 100, 2) AS lgd_pct,
-    ROUND(pd * lgd * 100, 4) AS el_rate_pct,
-    ROUND(pd * lgd * total_exposure, 2) AS total_expected_loss
+    ROUND((pd * 100)::numeric, 2)                  AS pd_pct,
+    ROUND((lgd * 100)::numeric, 2)                 AS lgd_pct,
+    ROUND((pd * lgd * 100)::numeric, 4)            AS el_rate_pct,
+    ROUND((pd * lgd * total_exposure)::numeric, 2) AS total_expected_loss
 FROM el_calc
 ORDER BY risk_tier;
 
@@ -160,7 +160,7 @@ pd_by_zip AS (
         ROUND(
             SUM(CASE WHEN loan_status IN ('Charged Off', 'Default',
                 'Does not meet the credit policy. Status:Charged Off') THEN 1 ELSE 0 END) * 1.0
-            / NULLIF(COUNT(*), 0), 4) AS pd,
+            / NULLIF(COUNT(*), 0)::numeric, 4) AS pd,
         COUNT(*) AS loan_count
     FROM mature_loans
     WHERE zip_code IS NOT NULL
@@ -170,7 +170,7 @@ pd_by_zip AS (
 lgd_by_zip AS (
     SELECT
         zip_code,
-        ROUND(AVG(1 - (total_pymnt / funded_amnt)), 4) AS lgd
+        ROUND(AVG(1 - (total_pymnt / funded_amnt))::numeric, 4) AS lgd
     FROM loans_master
     WHERE loan_status IN ('Charged Off', 'Default',
         'Does not meet the credit policy. Status:Charged Off')
@@ -182,12 +182,12 @@ lgd_by_zip AS (
 SELECT
     p.zip_code,
     p.loan_count,
-    ROUND(p.pd * 100, 2) AS pd_pct,
-    ROUND(l.lgd * 100, 2) AS lgd_pct,
-    ROUND(p.pd * l.lgd * 100, 4) AS el_rate_pct,
-    ROUND(AVG(m.median_income_2024), 2) AS avg_median_income,
-    ROUND(AVG(m.income_growth_22_23), 4) AS avg_income_growth_22_23,
-    ROUND(AVG(m.income_growth_23_24), 4) AS avg_income_growth_23_24
+    ROUND((p.pd * 100)::numeric, 2)                  AS pd_pct,
+    ROUND((l.lgd * 100)::numeric, 2)                 AS lgd_pct,
+    ROUND((p.pd * l.lgd * 100)::numeric, 4)          AS el_rate_pct,
+    ROUND(AVG(m.median_income_2024)::numeric, 2)     AS avg_median_income,
+    ROUND(AVG(m.income_growth_22_23)::numeric, 4)    AS avg_income_growth_22_23,
+    ROUND(AVG(m.income_growth_23_24)::numeric, 4)    AS avg_income_growth_23_24
 FROM pd_by_zip p
 JOIN lgd_by_zip l ON p.zip_code = l.zip_code
 LEFT JOIN loans_master m ON p.zip_code = m.zip_code
@@ -216,11 +216,11 @@ zip_risk AS (
         ROUND(
             SUM(CASE WHEN loan_status IN ('Charged Off', 'Default',
                 'Does not meet the credit policy. Status:Charged Off') THEN 1 ELSE 0 END) * 100.0
-            / NULLIF(COUNT(*), 0), 2) AS default_rate_pct,
+            / NULLIF(COUNT(*), 0)::numeric, 2) AS default_rate_pct,
         COUNT(*) AS loan_count,
-        ROUND(AVG(median_income_2024), 2) AS avg_median_income,
-        ROUND(AVG(income_growth_22_23), 4) AS avg_income_growth_22_23,
-        ROUND(AVG(income_growth_23_24), 4) AS avg_income_growth_23_24
+        ROUND(AVG(median_income_2024)::numeric, 2)       AS avg_median_income,
+        ROUND(AVG(income_growth_22_23)::numeric, 4)      AS avg_income_growth_22_23,
+        ROUND(AVG(income_growth_23_24)::numeric, 4)      AS avg_income_growth_23_24
     FROM mature_loans
     GROUP BY zip_code
     HAVING COUNT(*) >= 500
@@ -236,8 +236,8 @@ SELECT
     END AS income_growth_bucket,
     COUNT(*) AS num_zip_regions,
     SUM(loan_count) AS total_loans,
-    ROUND(AVG(default_rate_pct), 2) AS avg_default_rate_pct,
-    ROUND(AVG(avg_median_income), 2) AS avg_median_income
+    ROUND(AVG(default_rate_pct)::numeric, 2)  AS avg_default_rate_pct,
+    ROUND(AVG(avg_median_income)::numeric, 2) AS avg_median_income
 FROM zip_risk
 WHERE avg_income_growth_23_24 IS NOT NULL
 GROUP BY income_growth_bucket
