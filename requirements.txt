@@ -1,6 +1,7 @@
 # Data Processing Core
 pandas>=2.2.2
 numpy>=2.0.0
+pyarrow>=23.0.1
 
 # Database Connection
 sqlalchemy>=2.0.31
