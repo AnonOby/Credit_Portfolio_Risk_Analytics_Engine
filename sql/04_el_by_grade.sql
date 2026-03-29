@@ -22,14 +22,14 @@ pd_by_grade AS (
         ROUND(
             SUM(CASE WHEN loan_status IN ('Charged Off', 'Default',
                 'Does not meet the credit policy. Status:Charged Off') THEN 1 ELSE 0 END) * 1.0
-            / COUNT(*), 4) AS pd
+            / COUNT(*)::numeric, 4) AS pd
     FROM mature_loans
     GROUP BY grade
 ),
 lgd_by_grade AS (
     SELECT
         grade,
-        ROUND(AVG(1 - (total_pymnt / funded_amnt)), 4) AS lgd
+        ROUND(AVG(1 - (total_pymnt / funded_amnt))::numeric, 4) AS lgd
     FROM loans_master
     WHERE loan_status IN ('Charged Off', 'Default',
         'Does not meet the credit policy. Status:Charged Off')
@@ -40,8 +40,8 @@ el_calc AS (
     SELECT
         m.grade,
         COUNT(*)                                    AS loan_count,
-        ROUND(AVG(m.funded_amnt), 2)               AS avg_ead,
-        ROUND(SUM(m.funded_amnt), 2)               AS total_exposure,
+        ROUND(AVG(m.funded_amnt)::numeric, 2)      AS avg_ead,
+        ROUND(SUM(m.funded_amnt)::numeric, 2)      AS total_exposure,
         p.pd,
         l.lgd
     FROM mature_loans m
@@ -53,12 +53,12 @@ SELECT
     grade,
     loan_count,
     total_exposure,
-    ROUND(pd * 100, 2)                             AS pd_pct,
-    ROUND(lgd * 100, 2)                            AS lgd_pct,
+    ROUND((pd * 100)::numeric, 2)                  AS pd_pct,
+    ROUND((lgd * 100)::numeric, 2)                 AS lgd_pct,
     avg_ead,
-    ROUND(pd * lgd * avg_ead, 2)                    AS expected_loss_per_loan,
-    ROUND(pd * lgd * total_exposure, 2)             AS total_expected_loss,
-    ROUND(pd * lgd * 100, 4)                        AS el_rate_pct
+    ROUND((pd * lgd * avg_ead)::numeric, 2)        AS expected_loss_per_loan,
+    ROUND((pd * lgd * total_exposure)::numeric, 2) AS total_expected_loss,
+    ROUND((pd * lgd * 100)::numeric, 4)            AS el_rate_pct
 FROM el_calc
 ORDER BY grade;
 
@@ -86,7 +86,7 @@ pd_by_group AS (
         ROUND(
             SUM(CASE WHEN loan_status IN ('Charged Off', 'Default',
                 'Does not meet the credit policy. Status:Charged Off') THEN 1 ELSE 0 END) * 1.0
-            / COUNT(*), 4) AS pd
+            / COUNT(*)::numeric, 4) AS pd
     FROM mature_loans
     GROUP BY grade_group
 ),
@@ -97,7 +97,7 @@ lgd_by_group AS (
             WHEN grade IN ('C', 'D') THEN 'C-D (Near-Prime)'
             WHEN grade IN ('E', 'F', 'G') THEN 'E-G (Subprime)'
         END AS grade_group,
-        ROUND(AVG(1 - (total_pymnt / funded_amnt)), 4) AS lgd
+        ROUND(AVG(1 - (total_pymnt / funded_amnt))::numeric, 4) AS lgd
     FROM loans_master
     WHERE loan_status IN ('Charged Off', 'Default',
         'Does not meet the credit policy. Status:Charged Off')
@@ -108,7 +108,7 @@ el_calc AS (
     SELECT
         m.grade_group,
         COUNT(*)                                    AS loan_count,
-        ROUND(SUM(m.funded_amnt), 2)               AS total_exposure,
+        ROUND(SUM(m.funded_amnt)::numeric, 2)      AS total_exposure,
         p.pd,
         l.lgd
     FROM mature_loans m
@@ -120,10 +120,10 @@ SELECT
     grade_group,
     loan_count,
     total_exposure,
-    ROUND(pd * 100, 2)                             AS pd_pct,
-    ROUND(lgd * 100, 2)                            AS lgd_pct,
-    ROUND(pd * lgd * 100, 4)                        AS el_rate_pct,
-    ROUND(pd * lgd * total_exposure, 2)             AS total_expected_loss
+    ROUND((pd * 100)::numeric, 2)                  AS pd_pct,
+    ROUND((lgd * 100)::numeric, 2)                 AS lgd_pct,
+    ROUND((pd * lgd * 100)::numeric, 4)            AS el_rate_pct,
+    ROUND((pd * lgd * total_exposure)::numeric, 2) AS total_expected_loss
 FROM el_calc
 ORDER BY grade_group;
 
@@ -146,14 +146,14 @@ pd_by_term AS (
         ROUND(
             SUM(CASE WHEN loan_status IN ('Charged Off', 'Default',
                 'Does not meet the credit policy. Status:Charged Off') THEN 1 ELSE 0 END) * 1.0
-            / COUNT(*), 4) AS pd
+            / COUNT(*)::numeric, 4) AS pd
     FROM mature_loans
     GROUP BY term
 ),
 lgd_by_term AS (
     SELECT
         term,
-        ROUND(AVG(1 - (total_pymnt / funded_amnt)), 4) AS lgd
+        ROUND(AVG(1 - (total_pymnt / funded_amnt))::numeric, 4) AS lgd
     FROM loans_master
     WHERE loan_status IN ('Charged Off', 'Default',
         'Does not meet the credit policy. Status:Charged Off')
@@ -164,7 +164,7 @@ el_calc AS (
     SELECT
         m.term,
         COUNT(*)                                    AS loan_count,
-        ROUND(SUM(m.funded_amnt), 2)               AS total_exposure,
+        ROUND(SUM(m.funded_amnt)::numeric, 2)      AS total_exposure,
         p.pd,
         l.lgd
     FROM mature_loans m
@@ -176,10 +176,10 @@ SELECT
     term,
     loan_count,
     total_exposure,
-    ROUND(pd * 100, 2)                             AS pd_pct,
-    ROUND(lgd * 100, 2)                            AS lgd_pct,
-    ROUND(pd * lgd * 100, 4)                        AS el_rate_pct,
-    ROUND(pd * lgd * total_exposure, 2)             AS total_expected_loss
+    ROUND((pd * 100)::numeric, 2)                  AS pd_pct,
+    ROUND((lgd * 100)::numeric, 2)                 AS lgd_pct,
+    ROUND((pd * lgd * 100)::numeric, 4)            AS el_rate_pct,
+    ROUND((pd * lgd * total_exposure)::numeric, 2) AS total_expected_loss
 FROM el_calc
 ORDER BY term;
 
@@ -202,14 +202,14 @@ pd_by_purpose AS (
         ROUND(
             SUM(CASE WHEN loan_status IN ('Charged Off', 'Default',
                 'Does not meet the credit policy. Status:Charged Off') THEN 1 ELSE 0 END) * 1.0
-            / COUNT(*), 4) AS pd
+            / COUNT(*)::numeric, 4) AS pd
     FROM mature_loans
     GROUP BY purpose
 ),
 lgd_by_purpose AS (
     SELECT
         purpose,
-        ROUND(AVG(1 - (total_pymnt / funded_amnt)), 4) AS lgd
+        ROUND(AVG(1 - (total_pymnt / funded_amnt))::numeric, 4) AS lgd
     FROM loans_master
     WHERE loan_status IN ('Charged Off', 'Default',
         'Does not meet the credit policy. Status:Charged Off')
@@ -220,7 +220,7 @@ el_calc AS (
     SELECT
         m.purpose,
         COUNT(*)                                    AS loan_count,
-        ROUND(SUM(m.funded_amnt), 2)               AS total_exposure,
+        ROUND(SUM(m.funded_amnt)::numeric, 2)      AS total_exposure,
         p.pd,
         l.lgd
     FROM mature_loans m
@@ -232,10 +232,10 @@ SELECT
     purpose,
     loan_count,
     total_exposure,
-    ROUND(pd * 100, 2)                             AS pd_pct,
-    ROUND(lgd * 100, 2)                            AS lgd_pct,
-    ROUND(pd * lgd * 100, 4)                        AS el_rate_pct,
-    ROUND(pd * lgd * total_exposure, 2)             AS total_expected_loss
+    ROUND((pd * 100)::numeric, 2)                  AS pd_pct,
+    ROUND((lgd * 100)::numeric, 2)                 AS lgd_pct,
+    ROUND((pd * lgd * 100)::numeric, 4)            AS el_rate_pct,
+    ROUND((pd * lgd * total_exposure)::numeric, 2) AS total_expected_loss
 FROM el_calc
 ORDER BY total_expected_loss DESC
 LIMIT 10;
