@@ -160,7 +160,16 @@ Credit-Portfolio-Risk-Analytics-Engine/
 ├── data/
 │   ├── raw/                          # Raw data files
 │   │   ├── lending_club_loan.csv
-│   │   └── productDownload_*/
+│   │   └── productDownload_2026-02-17T231823/
+│   │       ├── ACSST5Y2022.S2503-Data.csv
+│   │       ├── ACSST5Y2022.S2503-Column-Metadata.csv
+│   │       ├── ACSST5Y2022.S2503-Table-Notes.txt
+│   │       ├── ACSST5Y2023.S2503-Data.csv
+│   │       ├── ACSST5Y2023.S2503-Column-Metadata.csv
+│   │       ├── ACSST5Y2023.S2503-Table-Notes.txt
+│   │       ├── ACSST5Y2024.S2503-Data.csv
+│   │       ├── ACSST5Y2024.S2503-Column-Metadata.csv
+│   │       └── ACSST5Y2024.S2503-Table-Notes.txt
 │   ├── processed/                    # Cleaned data
 │   │   └── census_economic_features.parquet
 │   └── powerbi/                      # Power BI data source
