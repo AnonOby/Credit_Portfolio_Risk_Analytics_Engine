@@ -9,19 +9,19 @@
 -- -----------------------------------------------
 SELECT
     COUNT(*)                                                        AS total_defaulted_loans,
-    ROUND(AVG(1 - (total_pymnt / funded_amnt)), 4)                 AS overall_avg_lgd,
-    ROUND(AVG(total_pymnt / funded_amnt), 4)                       AS overall_avg_recovery_rate,
-    ROUND(AVG(funded_amnt), 2)                                     AS avg_exposure_at_default,
-    ROUND(AVG(funded_amnt - total_pymnt), 2)                       AS avg_loss_amount,
-    ROUND(SUM(funded_amnt - total_pymnt), 2)                       AS total_loss_amount,
+    ROUND(AVG(1 - (total_pymnt / funded_amnt))::numeric, 4)       AS overall_avg_lgd,
+    ROUND(AVG(total_pymnt / funded_amnt)::numeric, 4)             AS overall_avg_recovery_rate,
+    ROUND(AVG(funded_amnt)::numeric, 2)                           AS avg_exposure_at_default,
+    ROUND(AVG(funded_amnt - total_pymnt)::numeric, 2)             AS avg_loss_amount,
+    ROUND(SUM(funded_amnt - total_pymnt)::numeric, 2)             AS total_loss_amount,
     ROUND(
-        PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY 1 - total_pymnt / funded_amnt), 4
+        PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY 1 - total_pymnt / funded_amnt)::numeric, 4
     )                                                               AS median_lgd,
     ROUND(
-        PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY 1 - total_pymnt / funded_amnt), 4
+        PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY 1 - total_pymnt / funded_amnt)::numeric, 4
     )                                                               AS p25_lgd,
     ROUND(
-        PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY 1 - total_pymnt / funded_amnt), 4
+        PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY 1 - total_pymnt / funded_amnt)::numeric, 4
     )                                                               AS p75_lgd
 FROM loans_master
 WHERE loan_status IN ('Charged Off', 'Default',
@@ -35,19 +35,19 @@ AND funded_amnt > 0;
 SELECT
     grade,
     COUNT(*)                                                        AS total_defaulted,
-    ROUND(AVG(1 - (total_pymnt / funded_amnt)), 4)                 AS avg_lgd,
-    ROUND(AVG(total_pymnt / funded_amnt), 4)                       AS avg_recovery_rate,
-    ROUND(AVG(funded_amnt), 2)                                     AS avg_exposure_at_default,
-    ROUND(AVG(funded_amnt - total_pymnt), 2)                       AS avg_loss_amount,
-    ROUND(SUM(funded_amnt - total_pymnt), 2)                       AS total_loss_amount,
+    ROUND(AVG(1 - (total_pymnt / funded_amnt))::numeric, 4)       AS avg_lgd,
+    ROUND(AVG(total_pymnt / funded_amnt)::numeric, 4)             AS avg_recovery_rate,
+    ROUND(AVG(funded_amnt)::numeric, 2)                           AS avg_exposure_at_default,
+    ROUND(AVG(funded_amnt - total_pymnt)::numeric, 2)             AS avg_loss_amount,
+    ROUND(SUM(funded_amnt - total_pymnt)::numeric, 2)             AS total_loss_amount,
     ROUND(
-        PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY 1 - total_pymnt / funded_amnt), 4
+        PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY 1 - total_pymnt / funded_amnt)::numeric, 4
     )                                                               AS median_lgd,
     ROUND(
-        PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY 1 - total_pymnt / funded_amnt), 4
+        PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY 1 - total_pymnt / funded_amnt)::numeric, 4
     )                                                               AS p25_lgd,
     ROUND(
-        PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY 1 - total_pymnt / funded_amnt), 4
+        PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY 1 - total_pymnt / funded_amnt)::numeric, 4
     )                                                               AS p75_lgd
 FROM loans_master
 WHERE loan_status IN ('Charged Off', 'Default',
@@ -67,10 +67,10 @@ SELECT
         WHEN grade IN ('E', 'F', 'G') THEN 'E-G (Subprime)'
     END AS grade_group,
     COUNT(*)                                                        AS total_defaulted,
-    ROUND(AVG(1 - (total_pymnt / funded_amnt)), 4)                 AS avg_lgd,
-    ROUND(AVG(total_pymnt / funded_amnt), 4)                       AS avg_recovery_rate,
-    ROUND(AVG(funded_amnt - total_pymnt), 2)                       AS avg_loss_amount,
-    ROUND(SUM(funded_amnt - total_pymnt), 2)                       AS total_loss_amount
+    ROUND(AVG(1 - (total_pymnt / funded_amnt))::numeric, 4)       AS avg_lgd,
+    ROUND(AVG(total_pymnt / funded_amnt)::numeric, 4)             AS avg_recovery_rate,
+    ROUND(AVG(funded_amnt - total_pymnt)::numeric, 2)             AS avg_loss_amount,
+    ROUND(SUM(funded_amnt - total_pymnt)::numeric, 2)             AS total_loss_amount
 FROM loans_master
 WHERE loan_status IN ('Charged Off', 'Default',
     'Does not meet the credit policy. Status:Charged Off')
@@ -85,9 +85,9 @@ ORDER BY grade_group;
 SELECT
     term,
     COUNT(*)                                                        AS total_defaulted,
-    ROUND(AVG(1 - (total_pymnt / funded_amnt)), 4)                 AS avg_lgd,
-    ROUND(AVG(total_pymnt / funded_amnt), 4)                       AS avg_recovery_rate,
-    ROUND(AVG(funded_amnt), 2)                                     AS avg_exposure_at_default
+    ROUND(AVG(1 - (total_pymnt / funded_amnt))::numeric, 4)       AS avg_lgd,
+    ROUND(AVG(total_pymnt / funded_amnt)::numeric, 4)             AS avg_recovery_rate,
+    ROUND(AVG(funded_amnt)::numeric, 2)                           AS avg_exposure_at_default
 FROM loans_master
 WHERE loan_status IN ('Charged Off', 'Default',
     'Does not meet the credit policy. Status:Charged Off')
@@ -102,9 +102,9 @@ ORDER BY term;
 SELECT
     purpose,
     COUNT(*)                                                        AS total_defaulted,
-    ROUND(AVG(1 - (total_pymnt / funded_amnt)), 4)                 AS avg_lgd,
-    ROUND(AVG(total_pymnt / funded_amnt), 4)                       AS avg_recovery_rate,
-    ROUND(AVG(funded_amnt), 2)                                     AS avg_exposure_at_default
+    ROUND(AVG(1 - (total_pymnt / funded_amnt))::numeric, 4)       AS avg_lgd,
+    ROUND(AVG(total_pymnt / funded_amnt)::numeric, 4)             AS avg_recovery_rate,
+    ROUND(AVG(funded_amnt)::numeric, 2)                           AS avg_exposure_at_default
 FROM loans_master
 WHERE loan_status IN ('Charged Off', 'Default',
     'Does not meet the credit policy. Status:Charged Off')
@@ -129,7 +129,7 @@ SELECT
         ELSE 'Negative Recovery'
     END AS recovery_bucket,
     COUNT(*)                                                        AS total_loans,
-    ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (), 2)             AS pct_of_defaulted
+    ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER ()::numeric, 2) AS pct_of_defaulted
 FROM loans_master
 WHERE loan_status IN ('Charged Off', 'Default',
     'Does not meet the credit policy. Status:Charged Off')
