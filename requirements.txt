@@ -9,6 +9,7 @@ psycopg2-binary>=2.9.9  # PostgreSQL driver
 
 # Analytcs
 scikit-learn>=1.8.0
+joblib>=1.5.3
 
 # Visualization
 matplotlib>=3.9.1
