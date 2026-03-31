@@ -379,7 +379,7 @@ class LGDModel:
         print(f"\n   Top {top_n} Feature Importances:")
         print("   " + "-" * 45)
         for i, row in importances.head(top_n).iterrows():
-            bar = '#' * int(row['importance'] * 200)
+            bar = '🦚' * int(row['importance'] * 200)
             print(f"   {row['feature']:<30} {row['importance']:.4f}  {bar}")
 
     def get_feature_importance(self):
