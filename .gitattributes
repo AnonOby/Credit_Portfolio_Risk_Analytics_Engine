@@ -1,5 +1,0 @@
-*.sql linguist-language=SQL
-
-data/raw/*.csv linguist-generated=true
-data/raw/*.parquet linguist-generated=true
-data/processed/*.parquet linguist-generated=true
