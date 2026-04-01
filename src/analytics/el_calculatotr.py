@@ -126,36 +126,18 @@ class ExpectedLossCalculator:
 
     def load_portfolio(self):
         """
-        Load all loans from database with EAD.
+        Load all loans from database with all feature columns.
+        All columns needed by PD and LGD models must be present.
 
         Returns:
-            pd.DataFrame: All loans with ead column.
+            pd.DataFrame: All loans.
         """
         print("Loading portfolio from database...")
 
-        query = """
-            SELECT
-                id,
-                grade,
-                sub_grade,
-                funded_amnt AS ead,
-                loan_amnt,
-                term,
-                int_rate,
-                purpose,
-                home_ownership,
-                zip_code,
-                annual_inc,
-                dti,
-                fico_range_low,
-                fico_range_high,
-                emp_length,
-                loan_status
-            FROM loans_master
-        """
+        query = "SELECT * FROM loans_master"
 
         df = pd.read_sql(query, get_engine())
-        print(f"   -> Loaded {len(df):,} loans.")
+        print(f"   -> Loaded {len(df):,} loans ({len(df.columns)} columns).")
         return df
 
     # ----------------------------------------------------------
