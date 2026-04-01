@@ -239,6 +239,9 @@ class VasicekModel:
             3. Draw default events: Bernoulli(P(D|S)) for each loan
             4. Compute portfolio loss: sum(LGD_i * EAD_i * default_i)
 
+        Uses a scenario-by-scenario loop to keep memory usage O(n_loans)
+        instead of O(n_scenarios * n_loans).
+
         Args:
             df: DataFrame with pd, lgd, ead, rho columns.
 
@@ -247,66 +250,48 @@ class VasicekModel:
         """
         print(f"\nRunning Monte Carlo simulation ({self.n_simulations:,} scenarios)...")
 
-        # Extract arrays for vectorized computation
-        pd_arr = df['pd'].values
-        lgd_arr = df['lgd'].values
-        ead_arr = df['ead'].values
-        rho_arr = df['rho'].values
+        # Extract arrays (float32 to save memory)
+        pd_arr = df['pd'].values.astype(np.float32)
+        lgd_arr = df['lgd'].values.astype(np.float32)
+        ead_arr = df['ead'].values.astype(np.float32)
+        rho_arr = df['rho'].values.astype(np.float32)
         n_loans = len(df)
 
         total_exposure = ead_arr.sum()
         print(f"   -> Portfolio: {n_loans:,} loans, ${total_exposure:,.0f} total exposure")
 
-        # Draw all systematic factors at once
-        s_factors = self.rng.standard_normal(self.n_simulations)
+        # Pre-compute constants that don't change per scenario
+        pd_safe = np.clip(pd_arr, 1e-10, 1 - 1e-10)
+        inv_pd = norm.ppf(pd_safe).astype(np.float32)
+        sqrt_rho = np.sqrt(rho_arr).astype(np.float32)
+        sqrt_one_minus_rho = np.sqrt(1 - rho_arr).astype(np.float32)
+        lgd_ead = lgd_arr * ead_arr  # Pre-multiply: loss per loan if defaulted
 
-        # Pre-compute portfolio-level EL (constant across simulations)
-        portfolio_el = np.sum(pd_arr * lgd_arr * ead_arr)
+        # Storage for scalar losses only (one per scenario)
+        losses = np.empty(self.n_simulations, dtype=np.float64)
 
-        # Storage for losses
-        losses = np.empty(self.n_simulations)
+        # --- Scenario loop (one at a time, O(n_loans) memory) ---
+        log_interval = max(self.n_simulations // 10, 1)
 
-        # --- Simulation loop ---
-        # Process in batches to manage memory for 2.26M loans
-        batch_size = 50_000
-        n_batches = int(np.ceil(self.n_simulations / batch_size))
+        for i in range(self.n_simulations):
+            # Step 1: Draw systematic factor
+            s = self.rng.standard_normal()
 
-        for batch_idx in range(n_batches):
-            start = batch_idx * batch_size
-            end = min(start + batch_size, self.n_simulations)
-            s_batch = s_factors[start:end]
-            batch_n = end - start
-
-            # Conditional PD for each (loan, scenario) pair
-            # Shape: (batch_n, n_loans)
-            pd_safe = np.clip(pd_arr, 1e-10, 1 - 1e-10)
-            inv_pd = norm.ppf(pd_safe)
-
-            sqrt_rho = np.sqrt(rho_arr)
-            sqrt_one_minus_rho = np.sqrt(1 - rho_arr)
-
-            # S is (batch_n, 1), inv_pd is (n_loans,)
-            # threshold shape: (batch_n, n_loans)
-            threshold = (inv_pd[np.newaxis, :] - s_batch[:, np.newaxis] * sqrt_rho[np.newaxis, :]) / \
-                        sqrt_one_minus_rho[np.newaxis, :]
-
+            # Step 2: Conditional PD for all loans (vectorized over loans)
+            threshold = (inv_pd - s * sqrt_rho) / sqrt_one_minus_rho
             cond_pd = norm.cdf(threshold)
 
-            # Draw defaults: Bernoulli(cond_pd)
-            defaults = self.rng.uniform(size=(batch_n, n_loans)) < cond_pd
+            # Step 3: Draw defaults (vectorized over loans)
+            defaults = self.rng.uniform(size=n_loans).astype(np.float32) < cond_pd
 
-            # Loss for each loan: LGD * EAD * default_indicator
-            # Sum across loans for each scenario
-            loan_losses = lgd_arr[np.newaxis, :] * ead_arr[np.newaxis, :] * defaults
-            losses[start:end] = loan_losses.sum(axis=1)
+            # Step 4: Portfolio loss = sum of LGD * EAD for defaulted loans
+            losses[i] = np.sum(lgd_ead[defaults])
 
-            if (batch_idx + 1) % 2 == 0 or batch_idx == n_batches - 1:
-                print(f"   -> Progress: {end:,} / {self.n_simulations:,} scenarios")
+            if (i + 1) % log_interval == 0:
+                print(f"   -> Progress: {i + 1:,} / {self.n_simulations:,} scenarios")
 
         self.loss_distribution = losses
-
         print(f"   -> Simulation complete.")
-
         return losses
 
     # ----------------------------------------------------------
