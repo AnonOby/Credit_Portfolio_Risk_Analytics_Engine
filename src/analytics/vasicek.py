@@ -231,16 +231,11 @@ class VasicekModel:
 
     def simulate_loss_distribution(self, df):
         """
-        Run Monte Carlo simulation of the portfolio loss distribution.
+        Monte Carlo simulation using grouped Binomial approximation.
 
-        For each simulation:
-            1. Draw systematic factor S ~ N(0,1)
-            2. Compute conditional PD for each loan: P(D|S)
-            3. Draw default events: Bernoulli(P(D|S)) for each loan
-            4. Compute portfolio loss: sum(LGD_i * EAD_i * default_i)
-
-        Uses a scenario-by-scenario loop to keep memory usage O(n_loans)
-        instead of O(n_scenarios * n_loans).
+        Instead of drawing Bernoulli for each of 2.26M loans per scenario,
+        we group loans by grade (7 groups) and use Binomial distribution.
+        This reduces the inner loop from 2.26M to 7 per scenario.
 
         Args:
             df: DataFrame with pd, lgd, ead, rho columns.
@@ -250,42 +245,46 @@ class VasicekModel:
         """
         print(f"\nRunning Monte Carlo simulation ({self.n_simulations:,} scenarios)...")
 
-        # Extract arrays (float32 to save memory)
-        pd_arr = df['pd'].values.astype(np.float32)
-        lgd_arr = df['lgd'].values.astype(np.float32)
-        ead_arr = df['ead'].values.astype(np.float32)
-        rho_arr = df['rho'].values.astype(np.float32)
-        n_loans = len(df)
+        total_exposure = df['ead'].sum()
+        print(f"   -> Portfolio: {len(df):,} loans, ${total_exposure:,.0f} total exposure")
 
-        total_exposure = ead_arr.sum()
-        print(f"   -> Portfolio: {n_loans:,} loans, ${total_exposure:,.0f} total exposure")
+        # Group loans by grade to get unique (pd, lgd, rho) combinations
+        groups = df.groupby('grade').agg(
+            pd=('pd', 'first'),
+            lgd=('lgd', 'first'),
+            rho=('rho', 'first'),
+            n_loans=('ead', 'count'),
+            total_ead=('ead', 'sum')
+        ).reset_index()
 
-        # Pre-compute constants that don't change per scenario
-        pd_safe = np.clip(pd_arr, 1e-10, 1 - 1e-10)
-        inv_pd = norm.ppf(pd_safe).astype(np.float32)
-        sqrt_rho = np.sqrt(rho_arr).astype(np.float32)
-        sqrt_one_minus_rho = np.sqrt(1 - rho_arr).astype(np.float32)
-        lgd_ead = lgd_arr * ead_arr  # Pre-multiply: loss per loan if defaulted
+        n_groups = len(groups)
+        print(f"   -> Aggregated to {n_groups} grade groups")
 
-        # Storage for scalar losses only (one per scenario)
+        # Pre-compute per-group constants
+        pd_safe = np.clip(groups['pd'].values, 1e-10, 1 - 1e-10)
+        inv_pd = norm.ppf(pd_safe)
+        sqrt_rho = np.sqrt(groups['rho'].values)
+        sqrt_one_minus_rho = np.sqrt(1 - groups['rho'].values)
+        lgd_values = groups['lgd'].values
+        n_loans_arr = groups['n_loans'].values.astype(np.int64)
+        ead_per_loan = groups['total_ead'].values / n_loans_arr  # avg EAD per loan in group
+
         losses = np.empty(self.n_simulations, dtype=np.float64)
-
-        # --- Scenario loop (one at a time, O(n_loans) memory) ---
         log_interval = max(self.n_simulations // 10, 1)
 
         for i in range(self.n_simulations):
-            # Step 1: Draw systematic factor
+            # Draw systematic factor
             s = self.rng.standard_normal()
 
-            # Step 2: Conditional PD for all loans (vectorized over loans)
+            # Conditional PD per group (7 values only)
             threshold = (inv_pd - s * sqrt_rho) / sqrt_one_minus_rho
             cond_pd = norm.cdf(threshold)
 
-            # Step 3: Draw defaults (vectorized over loans)
-            defaults = self.rng.uniform(size=n_loans).astype(np.float32) < cond_pd
+            # Binomial draws: how many defaults in each group
+            n_defaults = self.rng.binomial(n_loans_arr, cond_pd)
 
-            # Step 4: Portfolio loss = sum of LGD * EAD for defaulted loans
-            losses[i] = np.sum(lgd_ead[defaults])
+            # Portfolio loss = sum(defaults_k * avg_EAD_k * LGD_k)
+            losses[i] = np.sum(n_defaults * ead_per_loan * lgd_values)
 
             if (i + 1) % log_interval == 0:
                 print(f"   -> Progress: {i + 1:,} / {self.n_simulations:,} scenarios")
