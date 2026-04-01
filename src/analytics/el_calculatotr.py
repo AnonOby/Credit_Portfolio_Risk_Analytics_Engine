@@ -137,7 +137,7 @@ class ExpectedLossCalculator:
         query = "SELECT * FROM loans_master"
 
         df = pd.read_sql(query, get_engine())
-        df = df.rename(columns={'funded_amnt': 'ead'})
+        df['ead'] = df['funded_amnt']
         print(f"   -> Loaded {len(df):,} loans ({len(df.columns)} columns).")
         return df
 
