@@ -437,14 +437,13 @@ class PDModel:
         print("\n   Dashboard metrics saved to: {}".format(METRICS_PATH))
 
         # --- Feature importance CSV ---
-        if hasattr(self.model, "feature_importances_"):
-            fi_df = pd.DataFrame({
-                "feature": self.feature_names,
-                "importance": self.model.feature_importances_,
-            }).sort_values("importance", ascending=False).reset_index(drop=True)
-
+        fi_df = self._get_feature_importance_df()
+        if fi_df is not None:
+            fi_df = fi_df.reset_index(drop=True)
             fi_df.to_csv(FEATURE_IMPORTANCE_PATH, index=False)
             print("   Feature importance saved to: {}".format(FEATURE_IMPORTANCE_PATH))
+        else:
+            print("   Feature importance not available, skipping CSV export.")
 
     # ----------------------------------------------------------
     # Diagnostics
@@ -455,10 +454,10 @@ class PDModel:
         if self.model is None:
             return
 
-        importances = pd.DataFrame({
-            'feature': self.feature_names,
-            'importance': self.model.feature_importances_
-        }).sort_values('importance', ascending=False)
+        importances = self._get_feature_importance_df()
+        if importances is None:
+            print("\n   Feature importance not available for this model.")
+            return
 
         print("\n   Top {} Feature Importances:".format(top_n))
         print("   " + "-" * 50)
@@ -467,15 +466,54 @@ class PDModel:
             print("   {:<30} {:.4f}  {}".format(
                 row['feature'], row['importance'], bar))
 
+    def _get_feature_importance_df(self):
+        """
+        Safely retrieve feature importance DataFrame.
+        Uses built-in feature_importances_ if available,
+        otherwise falls back to permutation importance.
+        """
+        if hasattr(self.model, 'feature_importances_'):
+            fi = pd.DataFrame({
+                'feature': self.feature_names,
+                'importance': self.model.feature_importances_
+            }).sort_values('importance', ascending=False)
+            return fi
+
+        # Fallback: permutation importance
+        print("   -> feature_importances_ not available, computing permutation importance...")
+        try:
+            from sklearn.inspection import permutation_importance
+            from src.database.connection import get_engine
+            import pandas as _pd
+
+            # Reload a small sample for permutation importance
+            status_list = "', '".join(ALL_MATURE)
+            query = "SELECT * FROM loans_master WHERE loan_status IN ('{}') LIMIT 10000".format(status_list)
+            df_sample = _pd.read_sql(query, get_engine())
+            df_sample['is_default'] = df_sample['loan_status'].isin(DEFAULTED_STATUSES).astype(int)
+            X_sample = self.prepare_features(df_sample, fit_encoders=False)
+            y_sample = df_sample['is_default']
+
+            result = permutation_importance(self.model, X_sample, y_sample,
+                                            n_repeats=10, random_state=42, n_jobs=-1)
+            fi = pd.DataFrame({
+                'feature': self.feature_names,
+                'importance': result.importances_mean,
+            }).sort_values('importance', ascending=False)
+            return fi
+        except Exception as exc:
+            print("   -> Permutation importance also failed: {}".format(exc))
+            return None
+
     def get_feature_importance(self):
         """Return feature importance as a DataFrame."""
         if self.model is None:
             raise RuntimeError("Model not trained yet.")
 
-        return pd.DataFrame({
-            'feature': self.feature_names,
-            'importance': self.model.feature_importances_
-        }).sort_values('importance', ascending=False).reset_index(drop=True)
+        fi = self._get_feature_importance_df()
+        if fi is None:
+            return pd.DataFrame(columns=['feature', 'importance'])
+        return fi.reset_index(drop=True)
 
     def summary_by_grade(self, df=None):
         """
