@@ -4,6 +4,8 @@ LGD (Loss Given Default) Prediction Model
 Trains a regression model to predict recovery rates for defaulted loans,
 then derives LGD = 1 - recovery_rate.
 
+Model: GradientBoostingRegressor (Huber loss - robust to outliers)
+
 Target:
     recovery_rate = total_pymnt / funded_amnt
     LGD = 1 - recovery_rate
@@ -18,11 +20,10 @@ Features:
 
 import pandas as pd
 import numpy as np
+import json
 import sys
 import os
-import sklearn
 import joblib
-from pathlib import Path
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder, StandardScaler
@@ -68,13 +69,18 @@ MODEL_PATH = MODEL_DIR / 'lgd_model.joblib'
 SCALER_PATH = MODEL_DIR / 'lgd_scaler.joblib'
 ENCODERS_PATH = MODEL_DIR / 'lgd_encoders.joblib'
 
+# Dashboard export paths
+METRICS_PATH = MODEL_DIR / 'lgd_model_metrics.json'
+FEATURE_IMPORTANCE_PATH = MODEL_DIR / 'lgd_feature_importance.csv'
+
 
 class LGDModel:
     """
     Loss Given Default prediction model.
 
-    Predicts recovery rate using Gradient Boosting Regressor,
-    then converts to LGD:  LGD = 1 - predicted_recovery_rate.
+    Predicts recovery rate using Gradient Boosting Regressor with
+    Huber loss (robust to outliers in recovery rates), then converts
+    to LGD:  LGD = 1 - predicted_recovery_rate.
     """
 
     def __init__(self):
@@ -98,24 +104,20 @@ class LGDModel:
         print("Loading defaulted loans from database...")
 
         status_list = "', '".join(DEFAULTED_STATUSES)
-        query = f"""
-            SELECT *
-            FROM loans_master
-            WHERE loan_status IN ('{status_list}')
-              AND funded_amnt > 0
-        """
+        query = "SELECT * FROM loans_master WHERE loan_status IN ('{}') AND funded_amnt > 0".format(
+            status_list)
 
         df = pd.read_sql(query, get_engine())
-        print(f"   -> Loaded {len(df):,} defaulted loans.")
+        print("   -> Loaded {:,} defaulted loans.".format(len(df)))
 
         # Compute recovery rate and LGD
         df['recovery_rate'] = df['total_pymnt'] / df['funded_amnt']
         df['lgd'] = 1 - df['recovery_rate']
 
-        print(f"   -> Recovery rate: mean={df['recovery_rate'].mean():.4f}, "
-              f"median={df['recovery_rate'].median():.4f}")
-        print(f"   -> LGD:            mean={df['lgd'].mean():.4f}, "
-              f"median={df['lgd'].median():.4f}")
+        print("   -> Recovery rate: mean={:.4f}, median={:.4f}".format(
+            df['recovery_rate'].mean(), df['recovery_rate'].median()))
+        print("   -> LGD:            mean={:.4f}, median={:.4f}".format(
+            df['lgd'].mean(), df['lgd'].median()))
 
         return df
 
@@ -137,7 +139,8 @@ class LGDModel:
         """
         # Filter to available columns only
         available_features = [c for c in FEATURE_COLS if c in df.columns]
-        print(f"   -> Using {len(available_features)}/{len(FEATURE_COLS)} features.")
+        print("   -> Using {}/{} features.".format(
+            len(available_features), len(FEATURE_COLS)))
 
         X = df[available_features].copy()
 
@@ -151,7 +154,7 @@ class LGDModel:
             0.0
         )
 
-        # Interest burden: installment relative to income
+        # Revolving balance relative to income
         X['credit_utilization_combined'] = np.where(
             X['annual_inc'] > 0,
             X['revol_bal'] / X['annual_inc'],
@@ -169,11 +172,12 @@ class LGDModel:
                 X[col] = X[col].astype(str).fillna('Unknown')
                 le.fit(X[col])
                 self.encoders[col] = le
-                print(f"   -> Fitted encoder for '{col}': {len(le.classes_)} classes")
+                print("   -> Fitted encoder for '{}': {} classes".format(
+                    col, len(le.classes_)))
             else:
                 le = self.encoders.get(col)
                 if le is None:
-                    print(f"   -> WARNING: No encoder found for '{col}', skipping.")
+                    print("   -> WARNING: No encoder found for '{}', skipping.".format(col))
                     continue
                 X[col] = X[col].astype(str).fillna('Unknown')
                 # Map unseen labels to 'Unknown'
@@ -209,6 +213,7 @@ class LGDModel:
         3. Train/test split
         4. Train GradientBoostingRegressor
         5. Evaluate and store metrics
+        6. Save model and dashboard artefacts
 
         Args:
             test_size: Fraction of data for holdout test set.
@@ -230,7 +235,7 @@ class LGDModel:
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=test_size, random_state=random_state
         )
-        print(f"   -> Train: {len(X_train):,} | Test: {len(X_test):,}")
+        print("   -> Train: {:,} | Test: {:,}".format(len(X_train), len(X_test)))
 
         # Step 4: Train
         print("\nTraining GradientBoostingRegressor...")
@@ -257,6 +262,10 @@ class LGDModel:
         mae = mean_absolute_error(y_test, y_pred_clamped)
         r2 = r2_score(y_test, y_pred_clamped)
 
+        # MAPE (Mean Absolute Percentage Error) — avoid division by zero
+        mask = y_test.abs() > 1e-6
+        mape = np.mean(np.abs((y_test[mask] - y_pred_clamped[mask]) / y_test[mask])) * 100 if mask.sum() > 0 else 0.0
+
         # Convert to LGD metrics
         y_test_lgd = 1 - y_test
         y_pred_lgd = 1 - y_pred_clamped
@@ -265,29 +274,36 @@ class LGDModel:
         lgd_mae = mean_absolute_error(y_test_lgd, y_pred_lgd)
 
         self.metrics = {
-            'recovery_rmse': round(rmse, 4),
-            'recovery_mae': round(mae, 4),
-            'recovery_r2': round(r2, 4),
-            'lgd_rmse': round(lgd_rmse, 4),
-            'lgd_mae': round(lgd_mae, 4),
+            'recovery_rmse': round(float(rmse), 4),
+            'recovery_mae': round(float(mae), 4),
+            'recovery_r2': round(float(r2), 4),
+            'lgd_rmse': round(float(lgd_rmse), 4),
+            'lgd_mae': round(float(lgd_mae), 4),
             'train_size': len(X_train),
             'test_size': len(X_test),
             'n_features': len(self.feature_names)
         }
 
-        print(f"\n   Recovery Rate Metrics:")
-        print(f"     RMSE: {rmse:.4f}")
-        print(f"     MAE:  {mae:.4f}")
-        print(f"     R2:   {r2:.4f}")
-        print(f"\n   LGD Metrics:")
-        print(f"     RMSE: {lgd_rmse:.4f}")
-        print(f"     MAE:  {lgd_mae:.4f}")
+        print("\n   Recovery Rate Metrics:")
+        print("     RMSE: {:.4f}".format(rmse))
+        print("     MAE:  {:.4f}".format(mae))
+        print("     R2:   {:.4f}".format(r2))
+        print("\n   LGD Metrics:")
+        print("     RMSE: {:.4f}".format(lgd_rmse))
+        print("     MAE:  {:.4f}".format(lgd_mae))
 
         # Step 6: Feature Importance
         self._print_feature_importance()
 
         # Step 7: Save
         self.save_model()
+
+        # Step 8: Export dashboard artefacts
+        self._export_dashboard(
+            r2=r2, mae=mae, rmse=rmse, mape=mape,
+            y_test=y_test, y_pred=y_pred_clamped
+        )
+
         print("\n" + "=" * 60)
         print("LGD MODEL TRAINING COMPLETE")
         print("=" * 60)
@@ -345,22 +361,68 @@ class LGDModel:
         joblib.dump(self.scaler, SCALER_PATH)
         joblib.dump(self.encoders, ENCODERS_PATH)
 
-        print(f"\n   Model saved to: {MODEL_PATH}")
-        print(f"   Scaler saved to: {SCALER_PATH}")
-        print(f"   Encoders saved to: {ENCODERS_PATH}")
+        print("\n   Model saved to: {}".format(MODEL_PATH))
+        print("   Scaler saved to: {}".format(SCALER_PATH))
+        print("   Encoders saved to: {}".format(ENCODERS_PATH))
 
     def load_model(self):
         """Load a previously saved model, scaler, and encoders."""
         if not MODEL_PATH.exists():
-            raise FileNotFoundError(f"Model not found at {MODEL_PATH}")
+            raise FileNotFoundError("Model not found at {}".format(MODEL_PATH))
 
         self.model = joblib.load(MODEL_PATH)
         self.scaler = joblib.load(SCALER_PATH)
         self.encoders = joblib.load(ENCODERS_PATH)
 
-        print(f"Model loaded from: {MODEL_PATH}")
-        print(f"   Features: {self.model.n_features_in_}")
+        print("Model loaded from: {}".format(MODEL_PATH))
+        print("   Features: {}".format(self.model.n_features_in_))
         return self
+
+    # ----------------------------------------------------------
+    # Dashboard Export
+    # ----------------------------------------------------------
+
+    def _export_dashboard(self, r2, mae, rmse, mape, y_test, y_pred):
+        """
+        Export model metrics and feature importance for the
+        Streamlit visualization dashboard.
+
+        Files produced:
+            output/models/lgd_model_metrics.json
+            output/models/lgd_feature_importance.csv
+        """
+        MODEL_DIR.mkdir(parents=True, exist_ok=True)
+
+        # --- JSON metrics ---
+        # Sample up to 5,000 prediction/actual pairs for the
+        # dashboard scatter plot (too many points slow down Plotly).
+        sample_size = min(5000, len(y_test))
+        indices = np.random.default_rng(42).choice(len(y_test), size=sample_size, replace=False)
+
+        metrics_json = {
+            "r2": round(float(r2), 4),
+            "mae": round(float(mae), 4),
+            "rmse": round(float(rmse), 4),
+            "mape": round(float(mape), 4),
+            "predictions": [float(x) for x in y_pred[indices]],
+            "actuals": [float(x) for x in y_test.values[indices]],
+            "n_train": int(len(y_test) * (1 - 0.2)),  # approximate
+            "n_test": int(len(y_test)),
+        }
+
+        with open(METRICS_PATH, "w") as f:
+            json.dump(metrics_json, f, indent=2)
+        print("\n   Dashboard metrics saved to: {}".format(METRICS_PATH))
+
+        # --- Feature importance CSV ---
+        if hasattr(self.model, "feature_importances_"):
+            fi_df = pd.DataFrame({
+                "feature": self.feature_names,
+                "importance": self.model.feature_importances_,
+            }).sort_values("importance", ascending=False).reset_index(drop=True)
+
+            fi_df.to_csv(FEATURE_IMPORTANCE_PATH, index=False)
+            print("   Feature importance saved to: {}".format(FEATURE_IMPORTANCE_PATH))
 
     # ----------------------------------------------------------
     # Diagnostics
@@ -376,11 +438,12 @@ class LGDModel:
             'importance': self.model.feature_importances_
         }).sort_values('importance', ascending=False)
 
-        print(f"\n   Top {top_n} Feature Importances:")
+        print("\n   Top {} Feature Importances:".format(top_n))
         print("   " + "-" * 45)
         for i, row in importances.head(top_n).iterrows():
-            bar = '🦚' * int(row['importance'] * 200)
-            print(f"   {row['feature']:<30} {row['importance']:.4f}  {bar}")
+            bar = "#" * int(row['importance'] * 200)
+            print("   {:<30} {:.4f}  {}".format(
+                row['feature'], row['importance'], bar))
 
     def get_feature_importance(self):
         """Return feature importance as a DataFrame."""
@@ -437,6 +500,6 @@ if __name__ == "__main__":
         model.train()
         model.summary_by_grade()
     except Exception as e:
-        print(f"ERROR: {e}")
+        print("ERROR: {}".format(e))
         import traceback
         traceback.print_exc()

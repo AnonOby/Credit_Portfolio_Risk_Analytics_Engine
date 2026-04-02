@@ -25,7 +25,6 @@ import json
 import sys
 import os
 import joblib
-from pathlib import Path
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder, StandardScaler
