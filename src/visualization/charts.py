@@ -82,7 +82,7 @@ def purpose_bar_chart(df: pd.DataFrame, title: str = "Loans by Purpose") -> go.F
     """Horizontal bar chart for loan purpose distribution."""
     df = df.sort_values("count")
     fig = go.Figure(
-        go.Barh(y=df["purpose"], x=df["count"], orientation="h",
+        go.Bar(y=df["purpose"], x=df["count"], orientation="h",
                 marker_color=PRIMARY_COLOR, texttemplate="%{x:,.0f}",
                 textposition="outside"),
     )
