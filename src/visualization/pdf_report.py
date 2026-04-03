@@ -40,16 +40,15 @@ def generate_report() -> str:
         Absolute path to the generated PDF file.
     """
     try:
-        from reportlab.lib.pagesizes import letter, A4
+        from reportlab.lib.pagesizes import letter
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-        from reportlab.lib.units import inch, mm
-        from reportlab.lib.colors import HexColor, black, white
-        from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+        from reportlab.lib.units import inch
+        from reportlab.lib.colors import HexColor, white
+        from reportlab.lib.enums import TA_CENTER, TA_LEFT
         from reportlab.platypus import (
             SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
-            PageBreak, Image, KeepTogether,
+            PageBreak,
         )
-        from reportlab.lib import colors
     except ImportError:
         print("ERROR: reportlab is required. Install with: pip install reportlab")
         sys.exit(1)
@@ -93,39 +92,71 @@ def generate_report() -> str:
 
     title_style = ParagraphStyle(
         "CustomTitle", parent=styles["Title"],
-        fontSize=28, spaceAfter=12, textColor=HexColor("#2c3e50"),
-        alignment=TA_CENTER,
+        fontSize=28, spaceAfter=12, textColor=HexColor("#1a3e60"),
+        alignment=TA_CENTER, fontName="Helvetica-Bold",
     )
     subtitle_style = ParagraphStyle(
         "CustomSubtitle", parent=styles["Normal"],
-        fontSize=14, spaceAfter=6, textColor=HexColor("#7f8c8d"),
+        fontSize=12, spaceAfter=6, textColor=HexColor("#5d6d7e"),
         alignment=TA_CENTER,
     )
     heading_style = ParagraphStyle(
         "CustomHeading", parent=styles["Heading2"],
-        fontSize=16, spaceBefore=20, spaceAfter=10,
-        textColor=HexColor("#2c3e50"), borderWidth=1,
-        borderColor=HexColor("#2980b9"), borderPadding=5,
+        fontSize=16, spaceBefore=24, spaceAfter=12,
+        textColor=HexColor("#1a3e60"), fontName="Helvetica-Bold",
+        borderWidth=0, borderPadding=0,
     )
     body_style = ParagraphStyle(
         "CustomBody", parent=styles["Normal"],
-        fontSize=10, spaceAfter=8, leading=14,
+        fontSize=10, spaceAfter=12, leading=14,
+        textColor=HexColor("#2c3e50"),
     )
-    metric_label = ParagraphStyle(
-        "MetricLabel", parent=styles["Normal"],
-        fontSize=9, textColor=HexColor("#7f8c8d"),
-    )
-    metric_value = ParagraphStyle(
-        "MetricValue", parent=styles["Normal"],
-        fontSize=14, textColor=HexColor("#2c3e50"),
-    )
+
+    # -----------------------------------------------------------------------
+    # Helper function for professional table style (three-line table)
+    # -----------------------------------------------------------------------
+    def style_table(header_rows=1, total_row_pos=None):
+        """Return a TableStyle for a three-line table with alternating row backgrounds."""
+        base_style = [
+            # Header background and text
+            ("BACKGROUND", (0, 0), (-1, header_rows-1), HexColor("#1a3e60")),
+            ("TEXTCOLOR", (0, 0), (-1, header_rows-1), white),
+            ("FONTNAME", (0, 0), (-1, header_rows-1), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, header_rows-1), 9),
+            ("ALIGN", (0, 0), (-1, header_rows-1), "CENTER"),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            # Top border (thick)
+            ("LINEABOVE", (0, 0), (-1, 0), 1.5, HexColor("#1a3e60")),
+            # Bottom border of header (thick)
+            ("LINEBELOW", (0, header_rows-1), (-1, header_rows-1), 1, HexColor("#1a3e60")),
+            # Bottom border of table (thick)
+            ("LINEBELOW", (0, -1), (-1, -1), 1.5, HexColor("#1a3e60")),
+            # Alternating row colors for body
+            ("ROWBACKGROUNDS", (0, header_rows), (-1, -2), [HexColor("#ffffff"), HexColor("#f7f9fc")]),
+            # Font settings for body
+            ("FONTSIZE", (0, header_rows), (-1, -1), 9),
+            ("FONTNAME", (0, header_rows), (-1, -1), "Helvetica"),
+            # Padding
+            ("TOPPADDING", (0, 0), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ("LEFTPADDING", (0, 0), (-1, -1), 4),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+        ]
+        # If a total row is specified (last row), style it distinctively
+        if total_row_pos is not None and total_row_pos >= 0:
+            base_style.extend([
+                ("BACKGROUND", (0, total_row_pos), (-1, total_row_pos), HexColor("#eef2f5")),
+                ("LINEABOVE", (0, total_row_pos), (-1, total_row_pos), 0.5, HexColor("#bdc3c7")),
+                ("FONTNAME", (0, total_row_pos), (-1, total_row_pos), "Helvetica-Bold"),
+            ])
+        return TableStyle(base_style)
 
     # -----------------------------------------------------------------------
     # Build document
     # -----------------------------------------------------------------------
     doc = SimpleDocTemplate(
         str(pdf_path), pagesize=letter,
-        topMargin=0.75 * inch, bottomMargin=0.75 * inch,
+        topMargin=0.6 * inch, bottomMargin=0.6 * inch,
         leftMargin=0.75 * inch, rightMargin=0.75 * inch,
     )
 
@@ -134,11 +165,11 @@ def generate_report() -> str:
     # --- Cover page ---------------------------------------------------------
     story.append(Spacer(1, 2 * inch))
     story.append(Paragraph("Credit Portfolio Risk Report", title_style))
-    story.append(Spacer(1, 0.3 * inch))
+    story.append(Spacer(1, 0.2 * inch))
     story.append(Paragraph("Lending Club Loan Portfolio Analytics", subtitle_style))
-    story.append(Spacer(1, 0.5 * inch))
+    story.append(Spacer(1, 0.6 * inch))
 
-    # KPI summary box on cover
+    # KPI summary box on cover (enhanced)
     kpi_data = [
         ["Total Loans", "Total Funded", "Avg Rate", "Default Rate"],
         ["{:,.0f}".format(total_loans), "${:,.0f}".format(total_funded),
@@ -147,26 +178,27 @@ def generate_report() -> str:
         ["${:,.0f}".format(total_el), "{:.2f}%".format(el_pct),
          "{:.1f}%".format(avg_lgd), "{:.0f}".format(total_hhi)],
     ]
-    kpi_table = Table(kpi_data, colWidths=[1.8 * inch] * 4)
+    kpi_table = Table(kpi_data, colWidths=[1.7 * inch] * 4, repeatRows=1)
     kpi_table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), HexColor("#2980b9")),
-        ("TEXTCOLOR", (0, 0), (-1, 0), white),
-        ("BACKGROUND", (0, 1), (-1, 1), HexColor("#ecf0f1")),
-        ("BACKGROUND", (0, 2), (-1, 2), HexColor("#2980b9")),
-        ("TEXTCOLOR", (0, 2), (-1, 2), white),
-        ("BACKGROUND", (0, 3), (-1, 3), HexColor("#ecf0f1")),
+        ("BACKGROUND", (0, 0), (-1, 0), HexColor("#1a3e60")),
+        ("BACKGROUND", (0, 2), (-1, 2), HexColor("#1a3e60")),
+        ("TEXTCOLOR", (0, 0), (-1, 1), white),
+        ("TEXTCOLOR", (0, 2), (-1, 3), white),
         ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-        ("FONTSIZE", (0, 0), (-1, 0), 9),
-        ("FONTSIZE", (0, 1), (-1, 1), 12),
-        ("FONTSIZE", (0, 2), (-1, 2), 9),
-        ("FONTSIZE", (0, 3), (-1, 3), 12),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("FONTSIZE", (0, 0), (-1, 0), 10),
+        ("FONTSIZE", (0, 1), (-1, 1), 13),
+        ("FONTSIZE", (0, 2), (-1, 2), 10),
+        ("FONTSIZE", (0, 3), (-1, 3), 13),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTNAME", (0, 2), (-1, 2), "Helvetica-Bold"),
         ("TOPPADDING", (0, 0), (-1, -1), 8),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
         ("GRID", (0, 0), (-1, -1), 0.5, HexColor("#bdc3c7")),
-        ("BOX", (0, 0), (-1, -1), 1, HexColor("#2c3e50")),
+        ("BOX", (0, 0), (-1, -1), 1.2, HexColor("#1a3e60")),
     ]))
     story.append(kpi_table)
-    story.append(Spacer(1, 1 * inch))
+    story.append(Spacer(1, 1.2 * inch))
     story.append(Paragraph("Generated: {}".format(timestamp), subtitle_style))
     story.append(PageBreak())
 
@@ -179,7 +211,7 @@ def generate_report() -> str:
         "to G (highest risk).".format(total_loans, total_funded, avg_int_rate),
         body_style,
     ))
-    story.append(Spacer(1, 0.2 * inch))
+    story.append(Spacer(1, 0.1 * inch))
 
     # Portfolio summary table
     port_header = ["Grade", "Count", "Total Funded", "Avg Amount", "Avg Rate", "Avg FICO"]
@@ -204,21 +236,15 @@ def generate_report() -> str:
         "-",
     ])
 
-    port_table = Table([port_header] + port_rows, colWidths=[0.7 * inch] * 6)
-    port_table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), HexColor("#2c3e50")),
-        ("TEXTCOLOR", (0, 0), (-1, 0), white),
-        ("BACKGROUND", (0, -1), (-1, -1), HexColor("#d5f5e3")),
-        ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
-        ("ALIGN", (0, 0), (0, -1), "CENTER"),
-        ("FONTSIZE", (0, 0), (-1, -1), 8),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-        ("TOPPADDING", (0, 0), (-1, -1), 6),
-        ("GRID", (0, 0), (-1, -1), 0.5, HexColor("#bdc3c7")),
-        ("ROWBACKGROUNDS", (0, 1), (-1, -2), [HexColor("#ffffff"), HexColor("#f8f9fa")]),
-    ]))
+    port_table = Table([port_header] + port_rows,
+                       colWidths=[0.65*inch, 0.9*inch, 1.2*inch, 1.1*inch, 0.9*inch, 0.9*inch],
+                       repeatRows=1)
+    port_table.setStyle(style_table(header_rows=1, total_row_pos=len(port_rows)))
+    # Override alignment: numeric columns right-aligned
+    for col in range(1, len(port_header)):
+        port_table.setStyle(TableStyle([("ALIGN", (col, 1), (col, -1), "RIGHT")]))
+    port_table.setStyle(TableStyle([("ALIGN", (0, 1), (0, -1), "CENTER")]))
     story.append(port_table)
-
     story.append(PageBreak())
 
     # --- Section 2: Default Analysis ----------------------------------------
@@ -231,7 +257,7 @@ def generate_report() -> str:
             total_mature, overall_default_rate),
         body_style,
     ))
-    story.append(Spacer(1, 0.2 * inch))
+    story.append(Spacer(1, 0.1 * inch))
 
     def_header = ["Grade", "Mature Count", "Defaults", "Default Rate"]
     def_rows = []
@@ -249,21 +275,15 @@ def generate_report() -> str:
         "{:.2f}%".format(overall_default_rate),
     ])
 
-    def_table = Table([def_header] + def_rows, colWidths=[1.2 * inch] * 4)
-    def_table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), HexColor("#2c3e50")),
-        ("TEXTCOLOR", (0, 0), (-1, 0), white),
-        ("BACKGROUND", (0, -1), (-1, -1), HexColor("#fadbd8")),
-        ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
-        ("ALIGN", (0, 0), (0, -1), "CENTER"),
-        ("FONTSIZE", (0, 0), (-1, -1), 9),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-        ("TOPPADDING", (0, 0), (-1, -1), 6),
-        ("GRID", (0, 0), (-1, -1), 0.5, HexColor("#bdc3c7")),
-        ("ROWBACKGROUNDS", (0, 1), (-1, -2), [HexColor("#ffffff"), HexColor("#f8f9fa")]),
-    ]))
+    def_table = Table([def_header] + def_rows,
+                      colWidths=[1.2*inch, 1.5*inch, 1.5*inch, 1.5*inch],
+                      repeatRows=1)
+    def_table.setStyle(style_table(header_rows=1, total_row_pos=len(def_rows)))
+    for col in range(1, len(def_header)):
+        def_table.setStyle(TableStyle([("ALIGN", (col, 1), (col, -1), "RIGHT")]))
+    def_table.setStyle(TableStyle([("ALIGN", (0, 1), (0, -1), "CENTER")]))
     story.append(def_table)
-    story.append(Spacer(1, 0.3 * inch))
+    story.append(Spacer(1, 0.2 * inch))
 
     # --- Section 3: LGD Analysis --------------------------------------------
     story.append(Paragraph("3. Loss Given Default (LGD)", heading_style))
@@ -274,7 +294,7 @@ def generate_report() -> str:
         "due to higher interest rates accumulating in the balance before default.".format(avg_lgd),
         body_style,
     ))
-    story.append(Spacer(1, 0.2 * inch))
+    story.append(Spacer(1, 0.1 * inch))
 
     lgd_header = ["Grade", "Defaulted Count", "Avg LGD", "P25 LGD", "Median LGD", "P75 LGD"]
     lgd_rows = []
@@ -288,20 +308,14 @@ def generate_report() -> str:
             "{:.1%}".format(row["p75_lgd"]),
         ])
 
-    lgd_table = Table([lgd_header] + lgd_rows, colWidths=[0.9 * inch] * 6)
-    lgd_table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), HexColor("#2c3e50")),
-        ("TEXTCOLOR", (0, 0), (-1, 0), white),
-        ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
-        ("ALIGN", (0, 0), (0, -1), "CENTER"),
-        ("FONTSIZE", (0, 0), (-1, -1), 9),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-        ("TOPPADDING", (0, 0), (-1, -1), 6),
-        ("GRID", (0, 0), (-1, -1), 0.5, HexColor("#bdc3c7")),
-        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [HexColor("#ffffff"), HexColor("#f8f9fa")]),
-    ]))
+    lgd_table = Table([lgd_header] + lgd_rows,
+                      colWidths=[0.8*inch, 1.2*inch, 1.0*inch, 1.0*inch, 1.0*inch, 1.0*inch],
+                      repeatRows=1)
+    lgd_table.setStyle(style_table(header_rows=1))
+    for col in range(1, len(lgd_header)):
+        lgd_table.setStyle(TableStyle([("ALIGN", (col, 1), (col, -1), "RIGHT")]))
+    lgd_table.setStyle(TableStyle([("ALIGN", (0, 1), (0, -1), "CENTER")]))
     story.append(lgd_table)
-
     story.append(PageBreak())
 
     # --- Section 4: Expected Loss -------------------------------------------
@@ -313,7 +327,7 @@ def generate_report() -> str:
         "for loan pricing, capital allocation, and provisioning.".format(total_el, el_pct),
         body_style,
     ))
-    story.append(Spacer(1, 0.2 * inch))
+    story.append(Spacer(1, 0.1 * inch))
 
     el_header = ["Grade", "Exposure", "PD", "LGD", "EL/L", "Total EL", "EL %"]
     el_rows = []
@@ -333,21 +347,15 @@ def generate_report() -> str:
         "-", "${:,.0f}".format(total_el), "{:.2f}%".format(el_pct),
     ])
 
-    el_table = Table([el_header] + el_rows, colWidths=[0.75 * inch] * 7)
-    el_table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), HexColor("#2c3e50")),
-        ("TEXTCOLOR", (0, 0), (-1, 0), white),
-        ("BACKGROUND", (0, -1), (-1, -1), HexColor("#fdebd0")),
-        ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
-        ("ALIGN", (0, 0), (0, -1), "CENTER"),
-        ("FONTSIZE", (0, 0), (-1, -1), 8),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-        ("TOPPADDING", (0, 0), (-1, -1), 5),
-        ("GRID", (0, 0), (-1, -1), 0.5, HexColor("#bdc3c7")),
-        ("ROWBACKGROUNDS", (0, 1), (-1, -2), [HexColor("#ffffff"), HexColor("#f8f9fa")]),
-    ]))
+    el_table = Table([el_header] + el_rows,
+                     colWidths=[0.55*inch, 1.0*inch, 0.7*inch, 0.7*inch, 0.9*inch, 1.1*inch, 0.7*inch],
+                     repeatRows=1)
+    el_table.setStyle(style_table(header_rows=1, total_row_pos=len(el_rows)))
+    for col in range(1, len(el_header)):
+        el_table.setStyle(TableStyle([("ALIGN", (col, 1), (col, -1), "RIGHT")]))
+    el_table.setStyle(TableStyle([("ALIGN", (0, 1), (0, -1), "CENTER")]))
     story.append(el_table)
-    story.append(Spacer(1, 0.3 * inch))
+    story.append(Spacer(1, 0.2 * inch))
 
     # --- Section 5: Concentration -------------------------------------------
     story.append(Paragraph("5. Portfolio Concentration", heading_style))
@@ -363,7 +371,7 @@ def generate_report() -> str:
         ),
         body_style,
     ))
-    story.append(Spacer(1, 0.2 * inch))
+    story.append(Spacer(1, 0.1 * inch))
 
     # Top 10 concentration contributions
     top_conc = conc_df.sort_values("hhi_contrib", ascending=False).head(10)
@@ -377,20 +385,14 @@ def generate_report() -> str:
         ])
     conc_rows.append(["TOTAL", "-", "{:.0f}".format(total_hhi)])
 
-    conc_table = Table([conc_header] + conc_rows, colWidths=[2.5 * inch, 1.2 * inch, 1.5 * inch])
-    conc_table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), HexColor("#2c3e50")),
-        ("TEXTCOLOR", (0, 0), (-1, 0), white),
-        ("BACKGROUND", (0, -1), (-1, -1), HexColor("#d4efdf")),
-        ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
-        ("FONTSIZE", (0, 0), (-1, -1), 9),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-        ("TOPPADDING", (0, 0), (-1, -1), 5),
-        ("GRID", (0, 0), (-1, -1), 0.5, HexColor("#bdc3c7")),
-        ("ROWBACKGROUNDS", (0, 1), (-1, -2), [HexColor("#ffffff"), HexColor("#f8f9fa")]),
-    ]))
+    conc_table = Table([conc_header] + conc_rows,
+                       colWidths=[3.0*inch, 1.2*inch, 1.5*inch],
+                       repeatRows=1)
+    conc_table.setStyle(style_table(header_rows=1, total_row_pos=len(conc_rows)))
+    conc_table.setStyle(TableStyle([("ALIGN", (1, 1), (1, -1), "RIGHT"),
+                                    ("ALIGN", (2, 1), (2, -1), "RIGHT")]))
+    conc_table.setStyle(TableStyle([("ALIGN", (0, 1), (0, -1), "LEFT")]))
     story.append(conc_table)
-
     story.append(PageBreak())
 
     # --- Section 6: Interest Rate Analytics ---------------------------------
@@ -405,7 +407,7 @@ def generate_report() -> str:
         ),
         body_style,
     ))
-    story.append(Spacer(1, 0.2 * inch))
+    story.append(Spacer(1, 0.1 * inch))
 
     rate_header = ["Grade", "Count", "Min Rate", "Avg Rate", "Max Rate"]
     rate_rows = []
@@ -418,18 +420,13 @@ def generate_report() -> str:
             "{:.2f}%".format(row["max_rate"]),
         ])
 
-    rate_table = Table([rate_header] + rate_rows, colWidths=[1.1 * inch] * 5)
-    rate_table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), HexColor("#2c3e50")),
-        ("TEXTCOLOR", (0, 0), (-1, 0), white),
-        ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
-        ("ALIGN", (0, 0), (0, -1), "CENTER"),
-        ("FONTSIZE", (0, 0), (-1, -1), 9),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-        ("TOPPADDING", (0, 0), (-1, -1), 5),
-        ("GRID", (0, 0), (-1, -1), 0.5, HexColor("#bdc3c7")),
-        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [HexColor("#ffffff"), HexColor("#f8f9fa")]),
-    ]))
+    rate_table = Table([rate_header] + rate_rows,
+                       colWidths=[0.8*inch, 1.0*inch, 1.1*inch, 1.1*inch, 1.1*inch],
+                       repeatRows=1)
+    rate_table.setStyle(style_table(header_rows=1))
+    for col in range(1, len(rate_header)):
+        rate_table.setStyle(TableStyle([("ALIGN", (col, 1), (col, -1), "RIGHT")]))
+    rate_table.setStyle(TableStyle([("ALIGN", (0, 1), (0, -1), "CENTER")]))
     story.append(rate_table)
 
     # -----------------------------------------------------------------------
