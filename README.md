@@ -199,10 +199,10 @@ Credit-Portfolio-Risk-Analytics-Engine/
 │   │   └── risk_metrics.py           # VaR, stress testing
 │   │
 │   └── visualization/                # Visualization
-│       ├── loss_distribution.py      # Loss distribution plots
+│       ├── charts.py      # Loss distribution plots
 │       ├── powerbi_export.py         # Power BI data export
 │       ├── streamlit_app.py          # Web application
-│       └── report_generator.py       # PDF report generation
+│       └── pdf_report.py       # PDF report generation
 │
 ├── sql/                              # Standalone SQL scripts
 │   ├── 01_portfolio_overview.sql
