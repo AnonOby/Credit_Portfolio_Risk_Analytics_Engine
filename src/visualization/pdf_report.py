@@ -169,7 +169,7 @@ def generate_report() -> str:
     story.append(Paragraph("Lending Club Loan Portfolio Analytics", subtitle_style))
     story.append(Spacer(1, 0.6 * inch))
 
-    # KPI summary box on cover (enhanced)
+    # KPI summary box on cover (enhanced, with correct text color)
     kpi_data = [
         ["Total Loans", "Total Funded", "Avg Rate", "Default Rate"],
         ["{:,.0f}".format(total_loans), "${:,.0f}".format(total_funded),
@@ -180,10 +180,17 @@ def generate_report() -> str:
     ]
     kpi_table = Table(kpi_data, colWidths=[1.7 * inch] * 4, repeatRows=1)
     kpi_table.setStyle(TableStyle([
+        # Header rows (row 0 and row 2) – dark blue background, white text
         ("BACKGROUND", (0, 0), (-1, 0), HexColor("#1a3e60")),
         ("BACKGROUND", (0, 2), (-1, 2), HexColor("#1a3e60")),
-        ("TEXTCOLOR", (0, 0), (-1, 1), white),
-        ("TEXTCOLOR", (0, 2), (-1, 3), white),
+        ("TEXTCOLOR", (0, 0), (-1, 0), white),
+        ("TEXTCOLOR", (0, 2), (-1, 2), white),
+        # Data rows (row 1 and row 3) – light gray background, dark text
+        ("BACKGROUND", (0, 1), (-1, 1), HexColor("#f0f2f5")),
+        ("BACKGROUND", (0, 3), (-1, 3), HexColor("#f0f2f5")),
+        ("TEXTCOLOR", (0, 1), (-1, 1), HexColor("#2c3e50")),
+        ("TEXTCOLOR", (0, 3), (-1, 3), HexColor("#2c3e50")),
+        # Alignment and font
         ("ALIGN", (0, 0), (-1, -1), "CENTER"),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ("FONTSIZE", (0, 0), (-1, 0), 10),
@@ -192,6 +199,9 @@ def generate_report() -> str:
         ("FONTSIZE", (0, 3), (-1, 3), 13),
         ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
         ("FONTNAME", (0, 2), (-1, 2), "Helvetica-Bold"),
+        ("FONTNAME", (0, 1), (-1, 1), "Helvetica"),
+        ("FONTNAME", (0, 3), (-1, 3), "Helvetica"),
+        # Padding and borders
         ("TOPPADDING", (0, 0), (-1, -1), 8),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
         ("GRID", (0, 0), (-1, -1), 0.5, HexColor("#bdc3c7")),
