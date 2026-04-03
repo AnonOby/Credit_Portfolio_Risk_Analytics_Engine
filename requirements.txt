@@ -7,9 +7,10 @@ pyarrow>=23.0.1
 sqlalchemy>=2.0.31
 psycopg2-binary>=2.9.9  # PostgreSQL driver
 
-# Analytcs
+# Analytics
 scikit-learn>=1.8.0
 joblib>=1.5.3
+ipykernel>=7.2.0a1
 
 # Visualization
 matplotlib>=3.9.1
