@@ -60,11 +60,14 @@ def get_funded_amount_distribution() -> pd.DataFrame:
     """Return funded amount histogram buckets (25 bins)."""
     sql = """
     SELECT
-        width_bucket(funded_amnt, 0, 40000, 20)        AS bucket,
+        bucket,
         COUNT(*)                                        AS count,
         (bucket - 1) * 2000                             AS low,
         bucket * 2000                                   AS high
-    FROM loans_master
+    FROM (
+        SELECT width_bucket(funded_amnt, 0, 40000, 20) AS bucket
+        FROM loans_master
+    ) t
     GROUP BY bucket
     ORDER BY bucket;
     """
