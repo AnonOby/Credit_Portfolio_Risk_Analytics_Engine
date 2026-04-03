@@ -11,7 +11,7 @@ Steps:
     4. LGD Model Training  - GradientBoostingRegressor with Huber loss
     5. Vasicek ASRF Model  - Monte Carlo loss distribution, VaR @ 99.9%
     6. Power BI Export     - CSV tables for Power BI dashboard
-    7. PDF Report          - LaTeX risk report generation
+    7. PDF Report          - Compile existing LaTeX report to PDF
 
 Usage:
     python main.py                  # Run full pipeline (steps 1-7)
@@ -19,19 +19,12 @@ Usage:
     python main.py --step 3 4 5     # Run steps 3, 4, 5 only
     python main.py --skip-etl       # Skip step 1 (data already loaded)
     python main.py --list           # List all available steps
-
-Notes:
-    - Step 1 (ETL) is time-consuming (~15 min for 2.26M records).
-      Use --skip-etl if the database is already populated.
-    - Step 5 (Vasicek) takes ~2 min for 100K Monte Carlo scenarios.
-    - Step 7 (PDF) requires a LaTeX distribution (Texmaker / pdflatex).
-    - All model artifacts are saved to output/models/ and output/reports/.
 """
 
 import sys
-import os
 import time
 import argparse
+import subprocess
 from datetime import datetime
 from pathlib import Path
 
@@ -39,6 +32,9 @@ from pathlib import Path
 _PROJECT_ROOT = Path(__file__).resolve().parent
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
+
+# Output directories
+_REPORTS_DIR = _PROJECT_ROOT / "output" / "reports"
 
 
 # ==================================================================
@@ -79,7 +75,7 @@ STEPS = [
     {
         "id": 7,
         "name": "PDF Report",
-        "description": "Generate LaTeX report with tables, metrics, and equations",
+        "description": "Compile existing LaTeX .tex report to PDF, clean up aux files",
     },
 ]
 
@@ -250,19 +246,73 @@ def run_step_7_report():
     """
     Step 7: PDF Report Generation.
 
-    Generates a professional LaTeX (.tex) risk report covering all
-    analytics results. If pdflatex is available, the .tex is compiled
-    to PDF automatically. Otherwise, compile manually in Texmaker.
+    Locates the existing .tex file in output/reports/ and compiles it
+    to PDF via pdflatex. After a successful compilation, all auxiliary
+    files (.aux, .log, .out, .toc, .synctex.gz) are cleaned up,
+    leaving only the .tex and .pdf.
     """
-    from src.visualization.pdf_report import generate_report
-
     print("\n" + "=" * 70)
     print("STEP 7/7: PDF REPORT GENERATION")
-    print("  LaTeX report -> output/reports/")
+    print("  Compile existing .tex -> PDF -> Clean up aux files")
     print("=" * 70)
 
-    output_path = generate_report()
-    print("   Report generated: {}".format(output_path))
+    # ----------------------------------------------------------
+    # 1. Find .tex files in output/reports/
+    # ----------------------------------------------------------
+    tex_files = sorted(_REPORTS_DIR.glob("*.tex"))
+
+    if not tex_files:
+        print("   WARNING: No .tex files found in {}".format(_REPORTS_DIR))
+        print("   Place your .tex report there and re-run, or run pdf_report.py first.")
+        return
+
+    # Pick the most recently modified .tex
+    tex_path = max(tex_files, key=lambda p: p.stat().st_mtime)
+    print("   Found: {}".format(tex_path.name))
+    print("   Last modified: {}".format(
+        datetime.fromtimestamp(tex_path.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S")
+    ))
+
+    # ----------------------------------------------------------
+    # 2. Compile with pdflatex
+    # ----------------------------------------------------------
+    pdf_path = tex_path.with_suffix(".pdf")
+    compiled = False
+
+    try:
+        print("   Compiling with pdflatex...")
+        result = subprocess.run(
+            ["pdflatex", "-interaction=nonstopmode",
+             "-output-directory", str(_REPORTS_DIR), str(tex_path)],
+            capture_output=True, text=True, timeout=120,
+        )
+        if pdf_path.exists():
+            size_kb = pdf_path.stat().st_size / 1024
+            print("   PDF compiled: {} ({:.0f} KB)".format(pdf_path.name, size_kb))
+            compiled = True
+        else:
+            print("   pdflatex ran but PDF not found. Check the .log file.")
+    except FileNotFoundError:
+        print("   pdflatex not found on PATH. Open the .tex in Texmaker to compile manually.")
+    except subprocess.TimeoutExpired:
+        print("   pdflatex timed out. Compile manually in Texmaker.")
+    except Exception as exc:
+        print("   pdflatex failed: {}".format(exc))
+
+    # ----------------------------------------------------------
+    # 3. Clean up auxiliary files
+    # ----------------------------------------------------------
+    if compiled:
+        aux_extensions = [".aux", ".log", ".out", ".toc", ".synctex.gz"]
+        cleaned = 0
+        for ext in aux_extensions:
+            aux_file = tex_path.with_suffix(ext)
+            if aux_file.exists():
+                aux_file.unlink()
+                cleaned += 1
+        if cleaned > 0:
+            print("   Cleaned {} auxiliary file(s).".format(cleaned))
+        print("   Done. Output: {}".format(pdf_path))
 
 
 # ==================================================================
@@ -340,7 +390,6 @@ def run_steps(step_ids):
             step_status_icon, step_id, step_info["name"], duration
         ))
 
-        # Continue pipeline even if a step fails
         if status == "error":
             print("   Continuing to next step...")
 
@@ -450,13 +499,10 @@ def main():
 
     # Determine which steps to run
     if args.step is not None:
-        # User specified explicit steps
         step_ids = sorted(set(args.step))
     elif args.skip_etl:
-        # Skip ETL, run steps 2-7
         step_ids = [2, 3, 4, 5, 6, 7]
     else:
-        # Full pipeline: steps 1-7
         step_ids = [1, 2, 3, 4, 5, 6, 7]
 
     # Execute
