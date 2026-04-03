@@ -17,6 +17,7 @@
 \usepackage{titlesec}
 \usepackage{array}
 \usepackage{caption}
+\usepackage{amsmath}           % 解决 \text 未定义的问题
 
 % ============================================================
 % Page style
@@ -61,10 +62,10 @@
 \vspace{1.5cm}
 
 \begin{tabular}{r l}
-\textbf{Portfolio:}   & 2,260,668 Loans \\\[4pt]
-\textbf{Exposure:}    & \$34,004,208,600 \\\[4pt]
-\textbf{Grades:}      & A -- G \\\[4pt]
-\textbf{Data Source:} & Lending Club + US Census ACS S2503 \\\[4pt]
+\textbf{Portfolio:}   & 2,260,668 Loans \\
+\textbf{Exposure:}    & \$34,004,208,600 \\
+\textbf{Grades:}      & A -- G \\
+\textbf{Data Source:} & Lending Club + US Census ACS S2503 \\
 \textbf{Generated:}   & 2026-04-03 11:06:56 \\
 \end{tabular}
 
@@ -75,7 +76,7 @@
 \caption{Executive Summary}
 \begin{tabular}{l r}
 \toprule
-Metric & Value \\
+\textbf{Metric} & \textbf{Value} \\   % 表头加粗
 \midrule
 Total Loans & 2,260,668 \\
 Total Funded Amount & \$34,004,208,600 \\
