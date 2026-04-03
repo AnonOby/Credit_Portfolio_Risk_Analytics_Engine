@@ -18,12 +18,8 @@ Usage:
 """
 
 import sys
-import os
 from pathlib import Path
 from datetime import datetime
-
-import pandas as pd
-import numpy as np
 
 # Ensure project root is importable
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
