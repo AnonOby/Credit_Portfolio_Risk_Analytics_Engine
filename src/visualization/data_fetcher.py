@@ -560,6 +560,10 @@ class DataFetcher:
         return get_home_ownership_distribution()
 
     @staticmethod
+    def funded_amount_distribution():
+        return get_funded_amount_distribution()
+
+    @staticmethod
     def default_rates_by_grade():
         return get_default_rates_by_grade()
 
