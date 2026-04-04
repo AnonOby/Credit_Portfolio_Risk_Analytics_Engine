@@ -40,13 +40,13 @@
 
 | Risk Grade | Default Rate | Avg Exposure | Expected Loss |
 |------------|--------------|--------------|---------------|
-| A (Prime) | 5.2% | $12,340 | $64.2 per loan |
-| B | 8.7% | $14,890 | $129.5 per loan |
-| C | 12.4% | $16,720 | $207.3 per loan |
-| D | 18.9% | $18,450 | $348.5 per loan |
-| E-G (Subprime) | 28.6% | $21,100 | $603.5 per loan |
+| A (Prime) | 6.0% | $13,879 | $376 per loan |
+| B | 13.4% | $13,225 | $791 per loan |
+| C | 22.4% | $14,175 | $1,470 per loan |
+| D | 30.4% | $15,243 | $2,144 per loan |
+| E-G (Subprime) | 38.4–49.7% | $17,546–$20,384 | $3,090–$5,031 per loan |
 
-**Economic Insight**: Borrowers in regions with negative income growth (2023→2024) exhibit 1.8x higher default probability, validating the incorporation of macroeconomic factors into credit scoring models.
+**Economic Insight**: Borrowers in regions with negative income growth (2023→2024) exhibit 1.8× higher default probability, validating the incorporation of macroeconomic factors into credit scoring models.
 
 ---
 <a name="project-overview"></a>
@@ -59,8 +59,8 @@ This project builds a **production-grade credit risk analytics engine** that pro
 | Module | Function | Output |
 |--------|----------|--------|
 | **ETL Pipeline** | Data extraction, cleaning, enrichment | PostgreSQL `loans_master` table |
-| **PD Model** | Probability of Default prediction | Per-loan default probability |
-| **LGD Model** | Loss Given Default estimation | Recovery rate analysis |
+| **PD Model** | Probability of Default prediction | Per-loan default probability (AUC=0.7226) |
+| **LGD Model** | Loss Given Default estimation | Recovery rate analysis (R²=0.1513) |
 | **EL Calculator** | Expected Loss computation | Portfolio-level EL |
 | **Vasicek Model** | Regulatory capital (VaR @ 99.9%) | Unexpected Loss, Capital Requirement |
 | **Visualization** | Interactive dashboards | Power BI, Streamlit, PDF Reports |
@@ -80,10 +80,10 @@ This project builds a **production-grade credit risk analytics engine** that pro
 |----------|--------------|
 | **Database** | PostgreSQL 15, SQLAlchemy |
 | **Data Processing** | Pandas, NumPy, Parquet |
-| **Machine Learning** | Scikit-learn, XGBoost, LightGBM |
+| **Machine Learning** | Scikit-learn (HistGradientBoosting, GradientBoosting) |
 | **Statistical Modeling** | SciPy, Vasicek Model |
-| **Visualization** | Power BI, Streamlit, Matplotlib, Seaborn |
-| **Reporting** | ReportLab (PDF generation) |
+| **Visualization** | Power BI, Streamlit, Matplotlib, Seaborn, Plotly |
+| **Reporting** | LaTeX (pdflatex) |
 
 ---
 <a name="data-sources"></a>
@@ -119,7 +119,7 @@ This project builds a **production-grade credit risk analytics engine** that pro
 │   ┌────────────────────────────────┐    ┌────────────────────────────────┐    │
 │   │      SQL ANALYTICS             │    │      PYTHON ML MODELS          │    │
 │   │      ─────────────             │    │      ──────────────            │    │
-│   │ • Portfolio summary            │    │ • PD prediction (XGBoost)      │    │ 
+│   │ • Portfolio summary            │    │ • PD prediction (HistGradient) │    │ 
 │   │ • Default rate by grade        │    │ • LGD regression               │    │
 │   │ • LGD calculation              │    │ • Feature importance           │    │
 │   │ • EL segmentation              │    │ • Model persistence            │    │
@@ -158,51 +158,49 @@ This project builds a **production-grade credit risk analytics engine** that pro
 Credit-Portfolio-Risk-Analytics-Engine/
 │
 ├── data/
-│   ├── raw/                          # Raw data files
+│   ├── raw/                          # Raw data files (not tracked)
 │   │   ├── lending_club_loan.csv
 │   │   └── productDownload_2026-02-17T231823/
-│   │       ├── ACSST5Y2022.S2503-Data.csv
-│   │       ├── ACSST5Y2022.S2503-Column-Metadata.csv
-│   │       ├── ACSST5Y2022.S2503-Table-Notes.txt
-│   │       ├── ACSST5Y2023.S2503-Data.csv
-│   │       ├── ACSST5Y2023.S2503-Column-Metadata.csv
-│   │       ├── ACSST5Y2023.S2503-Table-Notes.txt
-│   │       ├── ACSST5Y2024.S2503-Data.csv
-│   │       ├── ACSST5Y2024.S2503-Column-Metadata.csv
-│   │       └── ACSST5Y2024.S2503-Table-Notes.txt
-│   ├── processed/                    # Cleaned data
+│   │       └── ACSST5Y*.csv
+│   ├── processed/                    # Cleaned data (not tracked)
 │   │   └── census_economic_features.parquet
-│   └── powerbi/                      # Power BI data source
-│       └── risk_metrics.csv
+│   └── powerbi/                      # Power BI data exports
+│       └── *.csv, *.json
 │
 ├── src/
 │   ├── etl/                          # ETL Pipeline
-│   │   ├── extractor.py              # Chunked data extraction
-│   │   ├── cleaner.py                # Data cleaning & normalization
-│   │   ├── loader.py                 # PostgreSQL bulk loading
-│   │   └── census_processor.py       # Census data processing
+│   │   ├── extractor.py
+│   │   ├── cleaner.py
+│   │   ├── loader.py
+│   │   └── census_processor.py
 │   │
 │   ├── database/                     # Database Layer
-│   │   ├── connection.py             # SQLAlchemy engine
-│   │   ├── queries/                  # SQL query scripts
-│   │   │   ├── portfolio_summary.sql
-│   │   │   ├── default_rate_analysis.sql
-│   │   │   ├── lgd_calculation.sql
-│   │   │   └── el_by_segment.sql
-│   │   └── db_analytics.py           # SQL execution wrapper
+│   │   ├── connection.py
+│   │   ├── db_analytics.py
+│   │   └── queries/                  # SQL query files
+│   │       ├── portfolio_summary.sql
+│   │       ├── default_rate_analysis.sql
+│   │       ├── lgd_calculation.sql
+│   │       └── el_by_segment.sql
 │   │
 │   ├── analytics/                    # Risk Modeling
-│   │   ├── pd_model.py               # PD prediction (ML)
-│   │   ├── lgd_model.py              # LGD estimation
-│   │   ├── vasicek.py                # Vasicek model core
-│   │   ├── el_calculator.py          # EL/UL computation
-│   │   └── risk_metrics.py           # VaR, stress testing
+│   │   ├── pd_model.py
+│   │   ├── lgd_model.py
+│   │   ├── vasicek.py
+│   │   ├── el_calculator.py
+│   │   └── risk_metrics.py
 │   │
-│   └── visualization/                # Visualization
-│       ├── charts.py      # Loss distribution plots
-│       ├── powerbi_export.py         # Power BI data export
-│       ├── streamlit_app.py          # Web application
-│       └── pdf_report.py       # PDF report generation
+│   └── visualization/                # Visualization & Dashboard
+│       ├── charts.py                 # Plotly chart components
+│       ├── data_fetcher.py           # Database queries for Streamlit
+│       ├── chart_generator.py        # Static PNG chart generator
+│       ├── pdf_report.py             # LaTeX PDF report generator
+│       ├── powerbi_export.py         # CSV exports for Power BI
+│       └── pages/                    # Streamlit multi‑page app
+│           ├── 01_portfolio_overview.py
+│           ├── 02_default_analysis.py
+│           ├── 03_risk_metrics.py
+│           └── 04_model_performance.py
 │
 ├── sql/                              # Standalone SQL scripts
 │   ├── 01_portfolio_overview.sql
@@ -212,18 +210,18 @@ Credit-Portfolio-Risk-Analytics-Engine/
 │   └── 05_risk_summary.sql
 │
 ├── notebooks/
-│   └── risk_analysis.ipynb           # Exploratory analysis
+│   └── risk_analysis.ipynb           # Exploratory Jupyter notebook
 │
-├── output/
-│   ├── figures/                      # Generated charts
-│   └── risk_report.pdf               # Final report
+├── output/                           # Generated outputs (not tracked)
+│   ├── figures/                      # 18 PNG charts
+│   ├── models/                       # Trained models & metrics
+│   └── reports/                      # PDF & LaTeX reports
 │
-├── powerbi/
-│   └── Credit_Risk_Dashboard.pbix    # Power BI file
+├── assets/                           # Images for README (optional)
 │
-├── config.py                         # Configuration
-├── main.py                           # Main entry point
-├── app.py                            # Streamlit entry point
+├── config.py                         # Configuration (paths, DB)
+├── main.py                           # Pipeline orchestrator
+├── app.py                            # Streamlit dashboard entry point
 ├── requirements.txt
 └── README.md
 ```
@@ -276,7 +274,7 @@ python src/etl/loader.py
 ### Run Analysis
 
 ```bash
-# Full pipeline
+# Full pipeline (ETL, analytics, models, Vasicek, export, PDF)
 python main.py
 
 # Or launch Streamlit dashboard
@@ -289,33 +287,40 @@ streamlit run app.py
 
 ### Probability of Default (PD)
 
-**Model**: Gradient Boosting Classifier
+**Model**: HistGradientBoostingClassifier
 
 | Metric | Value |
 |--------|-------|
-| AUC-ROC | 0.89 |
-| Recall @ 0.5 threshold | 88% |
-| Precision | 76% |
+| AUC-ROC | 0.7226 |
+| Accuracy | 0.8041 |
+| Precision | 0.5729 |
+| Recall (default threshold) | 0.0816 |
 
 **Top Features by Importance**:
-1. FICO Score Range
-2. Debt-to-Income Ratio (DTI)
-3. Interest Rate
-4. Annual Income
-5. Credit History Length
+1. Sub-grade
+2. Term
+3. Grade
+4. Monthly burden (installment/income)
+5. DTI
 
 ### Loss Given Default (LGD)
 
-**Method**: Historical recovery rate analysis
+**Model**: GradientBoostingRegressor (Huber loss)
 
-```
-LGD = 1 - (Total Payment / Funded Amount)
-```
+| Metric | Value |
+|--------|-------|
+| R² | 0.1513 |
+| MAE | 0.2086 |
+| RMSE | 0.2585 |
 
 **Average LGD by Grade**:
-- Grade A-B: 42%
-- Grade C-D: 58%
-- Grade E-G: 71%
+- Grade A: 44.9%
+- Grade B: 44.6%
+- Grade C: 46.2%
+- Grade D: 46.3%
+- Grade E: 45.8%
+- Grade F: 46.0%
+- Grade G: 49.7%
 
 ### Expected Loss (EL)
 
@@ -347,6 +352,12 @@ Conditional PD: P(D|S) = Φ((Φ⁻¹(PD) + S√ρ) / √(1-ρ))
 VaR @ 99.9% confidence level
 ```
 
+**Key Results (100,000 simulations)**:
+- Expected Loss: $3.11B (9.16% of exposure)
+- VaR @ 99.9%: $10.08B (29.64% of exposure)
+- Unexpected Loss: $6.97B
+- Economic Capital: $10.08B
+
 ---
 <a name="visualization-preview"></a>
 ## 📈 Visualization Preview
@@ -363,17 +374,21 @@ VaR @ 99.9% confidence level
 
 ![Power BI](assets/powerbi_dashboard.png)
 
+> **Note**: The images above are placeholders. Actual charts can be found in `output/figures/` after running the pipeline.
+
 ---
 <a name="lessons-learned"></a>
 ## 🧪 Lessons Learned
 
-1. **Data Quality Matters**: 22 footer/summary rows were detected and removed during cleaning - always validate raw data before analysis
+1. **Data Quality Matters**: 22 footer/summary rows were detected and removed during cleaning - always validate raw data before analysis.
 
-2. **ZIP Code Matching**: Census data uses 5-digit ZIP codes, while Lending Club masks to 3-digit prefix - aggregation by prefix is essential for proper merge
+2. **ZIP Code Matching**: Census data uses 5-digit ZIP codes, while Lending Club masks to 3-digit prefix - aggregation by prefix is essential for proper merge.
 
-3. **SQL vs Python**: Aggregation queries run 10x faster in PostgreSQL than in-memory pandas for 2M+ records
+3. **SQL vs Python**: Aggregation queries run 10x faster in PostgreSQL than in-memory pandas for 2M+ records.
 
-4. **Model Interpretability**: For credit risk applications, feature importance and SHAP values are critical for regulatory compliance and stakeholder communication
+4. **Model Interpretability**: For credit risk applications, feature importance and SHAP values are critical for regulatory compliance and stakeholder communication.
+
+5. **PostgreSQL Type Casting**: Always cast to `numeric` before using `ROUND()` with two arguments to avoid `function round(double precision, integer) does not exist` errors.
 
 ---
 <a name="limitations-and-future-improvements"></a>
@@ -385,6 +400,7 @@ VaR @ 99.9% confidence level
 | Single-factor Vasicek | Multi-factor model for sector-specific risk |
 | No real-time scoring | Deploy as REST API service |
 | Limited to Lending Club data | Extend to other loan portfolios |
+| LGD model low R² (0.15) | Add collateral data, time-to-default features, or two-stage model |
 
 ---
 <a name="reference"></a>
