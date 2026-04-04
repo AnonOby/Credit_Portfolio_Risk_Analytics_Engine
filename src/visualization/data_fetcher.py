@@ -347,18 +347,23 @@ def get_default_by_fico_bucket() -> pd.DataFrame:
             'Does not meet the credit policy. Status:Charged Off'
         )
         AND fico_range_low IS NOT NULL
+    ),
+    bucketed AS (
+        SELECT
+            WIDTH_BUCKET(fico_midpoint, 640, 850, 10) AS bucket,
+            is_default
+        FROM mature
     )
     SELECT
-        WIDTH_BUCKET(fico_midpoint, 640, 850, 10)      AS bucket,
-        (bucket - 1) * 21 + 640                         AS fico_low,
-        bucket * 21 + 640                               AS fico_high,
-        COUNT(*)                                        AS total,
-        SUM(CASE WHEN is_default THEN 1 ELSE 0 END)    AS defaults,
+        bucket,
+        (bucket - 1) * 21 + 640 AS fico_low,
+        bucket * 21 + 640 AS fico_high,
+        COUNT(*) AS total,
+        SUM(CASE WHEN is_default THEN 1 ELSE 0 END) AS defaults,
         ROUND(
-            SUM(CASE WHEN is_default THEN 1 ELSE 0 END)::numeric
-            * 100.0 / COUNT(*), 2
-        )                                               AS default_rate
-    FROM mature
+            100.0 * SUM(CASE WHEN is_default THEN 1 ELSE 0 END) / COUNT(*), 2
+        ) AS default_rate
+    FROM bucketed
     GROUP BY bucket
     ORDER BY bucket;
     """
