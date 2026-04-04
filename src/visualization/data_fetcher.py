@@ -307,18 +307,23 @@ def get_default_by_dti_bucket() -> pd.DataFrame:
             'Does not meet the credit policy. Status:Charged Off'
         )
         AND dti IS NOT NULL
+    ),
+    bucketed AS (
+        SELECT
+            WIDTH_BUCKET(dti, 0, 50, 10) AS bucket,
+            is_default
+        FROM mature
     )
     SELECT
-        WIDTH_BUCKET(dti, 0, 50, 10)                  AS bucket,
-        (bucket - 1) * 5                               AS dti_low,
-        bucket * 5                                     AS dti_high,
-        COUNT(*)                                        AS total,
-        SUM(CASE WHEN is_default THEN 1 ELSE 0 END)    AS defaults,
+        bucket,
+        (bucket - 1) * 5 AS dti_low,
+        bucket * 5 AS dti_high,
+        COUNT(*) AS total,
+        SUM(CASE WHEN is_default THEN 1 ELSE 0 END) AS defaults,
         ROUND(
-            SUM(CASE WHEN is_default THEN 1 ELSE 0 END)::numeric
-            * 100.0 / COUNT(*), 2
-        )                                               AS default_rate
-    FROM mature
+            100.0 * SUM(CASE WHEN is_default THEN 1 ELSE 0 END) / COUNT(*), 2
+        ) AS default_rate
+    FROM bucketed
     GROUP BY bucket
     ORDER BY bucket;
     """
