@@ -110,6 +110,10 @@ st.markdown(
     "Results are illustrative and computed entirely client-side."
 )
 
+# These variables should be defined earlier in the page
+# el_df = DataFetcher.el_by_grade()
+# total_el = el_df["total_el"].sum()
+
 with st.form("stress_test_form"):
     col_a, col_b = st.columns(2)
     with col_a:
@@ -135,7 +139,6 @@ if submitted:
         (stressed_total - total_el) / total_el * 100 if total_el > 0 else 0,
     ))
 
-    # Stressed EL bar chart
     import plotly.graph_objects as go
     colors = ["#2980b9", "#e74c3c"]
     fig_stress = go.Figure(data=[
