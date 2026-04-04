@@ -228,7 +228,7 @@ def default_by_segment_bar(df: pd.DataFrame, segment_col: str,
         g = min(1.0, 2 * (1 - ratio))
         colors.append("rgb({},{},0)".format(int(r * 255), int(g * 255)))
     fig = go.Figure(
-        go.Barh(y=df[segment_col], x=df["default_rate"], orientation="h",
+        go.Bar(y=df[segment_col], x=df["default_rate"], orientation="h",
                 marker_color=colors,
                 texttemplate="%{x:.1f}%", textposition="outside"),
     )
@@ -326,7 +326,7 @@ def concentration_hhi_chart(df: pd.DataFrame,
         g = min(1.0, 2 * (1 - ratio))
         colors.append("rgb({},{},0)".format(int(r * 255), int(g * 255)))
     fig = go.Figure(
-        go.Barh(y=df["segment"], x=df["hhi_contrib"], orientation="h",
+        go.Bar(y=df["segment"], x=df["hhi_contrib"], orientation="h",
                 marker_color=colors,
                 texttemplate="%{x:.0f}", textposition="outside"),
     )
