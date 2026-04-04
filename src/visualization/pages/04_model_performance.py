@@ -107,7 +107,7 @@ def _plot_feature_importance(df, title, top_n=20):
         imp_col = df.columns[1]
     df = df.sort_values(imp_col, ascending=True).tail(top_n)
     fig = go.Figure(
-        go.Barh(y=df[feat_col], x=df[imp_col], orientation="h",
+        go.Bar(y=df[feat_col], x=df[imp_col], orientation="h",
                 marker_color="#2980b9",
                 texttemplate="%{x:.4f}", textposition="outside"),
     )
