@@ -227,7 +227,8 @@ class DataCleaner:
             'earliest_cr_line', 'fico_range_low', 'fico_range_high',
             'inq_last_6mths', 'open_acc', 'pub_rec', 'revol_bal', 'revol_util',
             'total_acc', 'total_pymnt', 'total_rec_prncp', 'total_rec_int',
-            'last_pymnt_d', 'last_pymnt_amnt', 'credit_history_months'
+            'last_pymnt_d', 'last_pymnt_amnt', 'credit_history_months',
+            'addr_state'
         ]
 
         # Filter: only keep columns that exist in the current chunk
