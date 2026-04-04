@@ -110,38 +110,41 @@ st.markdown(
     "Results are illustrative and computed entirely client-side."
 )
 
-col_a, col_b = st.columns(2)
-with col_a:
-    pd_shock = st.slider("PD Multiplier", 1.0, 3.0, 1.5, 0.1)
-with col_b:
-    lgd_shock = st.slider("LGD Multiplier", 1.0, 2.0, 1.2, 0.1)
+with st.form("stress_test_form"):
+    col_a, col_b = st.columns(2)
+    with col_a:
+        pd_shock = st.slider("PD Multiplier", 1.0, 3.0, 1.5, 0.1)
+    with col_b:
+        lgd_shock = st.slider("LGD Multiplier", 1.0, 2.0, 1.2, 0.1)
+    submitted = st.form_submit_button("Run Stress Test")
 
-stressed_el = el_df.copy()
-stressed_el["stressed_pd"] = np.minimum(stressed_el["pd"] * pd_shock, 1.0)
-stressed_el["stressed_lgd"] = np.minimum(stressed_el["lgd"] * lgd_shock, 1.0)
-stressed_el["stressed_el"] = (
-    stressed_el["stressed_pd"] * stressed_el["stressed_lgd"] * stressed_el["total_ead"]
-)
-stressed_total = stressed_el["stressed_el"].sum()
+if submitted:
+    stressed_el = el_df.copy()
+    stressed_el["stressed_pd"] = np.minimum(stressed_el["pd"] * pd_shock, 1.0)
+    stressed_el["stressed_lgd"] = np.minimum(stressed_el["lgd"] * lgd_shock, 1.0)
+    stressed_el["stressed_el"] = (
+        stressed_el["stressed_pd"] * stressed_el["stressed_lgd"] * stressed_el["total_ead"]
+    )
+    stressed_total = stressed_el["stressed_el"].sum()
 
-col1, col2, col3 = st.columns(3)
-col1.metric("Baseline EL", "${:,.0f}".format(total_el))
-col2.metric("Stressed EL", "${:,.0f}".format(stressed_total))
-col3.metric("Increase", "+${:,.0f} ({:+.1f}%)".format(
-    stressed_total - total_el,
-    (stressed_total - total_el) / total_el * 100 if total_el > 0 else 0,
-))
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Baseline EL", "${:,.0f}".format(total_el))
+    col2.metric("Stressed EL", "${:,.0f}".format(stressed_total))
+    col3.metric("Increase", "+${:,.0f} ({:+.1f}%)".format(
+        stressed_total - total_el,
+        (stressed_total - total_el) / total_el * 100 if total_el > 0 else 0,
+    ))
 
-# Stressed EL bar chart
-import plotly.graph_objects as go
-colors = ["#2980b9", "#e74c3c"]
-fig_stress = go.Figure(data=[
-    go.Bar(name="Baseline EL", x=el_df["grade"], y=el_df["total_el"],
-           marker_color=colors[0]),
-    go.Bar(name="Stressed EL", x=stressed_el["grade"], y=stressed_el["stressed_el"],
-           marker_color=colors[1]),
-])
-fig_stress.update_layout(barmode="group", title="Baseline vs Stressed EL by Grade",
-                         template="plotly_white", height=450)
-fig_stress.update_yaxes(title_text="Expected Loss ($)", tickprefix="$")
-st.plotly_chart(fig_stress, use_container_width=True)
+    # Stressed EL bar chart
+    import plotly.graph_objects as go
+    colors = ["#2980b9", "#e74c3c"]
+    fig_stress = go.Figure(data=[
+        go.Bar(name="Baseline EL", x=el_df["grade"], y=el_df["total_el"],
+               marker_color=colors[0]),
+        go.Bar(name="Stressed EL", x=stressed_el["grade"], y=stressed_el["stressed_el"],
+               marker_color=colors[1]),
+    ])
+    fig_stress.update_layout(barmode="group", title="Baseline vs Stressed EL by Grade",
+                             template="plotly_white", height=450)
+    fig_stress.update_yaxes(title_text="Expected Loss ($)", tickprefix="$")
+    st.plotly_chart(fig_stress, use_container_width=True)
