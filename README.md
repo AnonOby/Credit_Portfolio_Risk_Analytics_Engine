@@ -63,7 +63,7 @@ This project builds a **production-grade credit risk analytics engine** that pro
 | **LGD Model** | Loss Given Default estimation | Recovery rate analysis (R²=0.1513) |
 | **EL Calculator** | Expected Loss computation | Portfolio-level EL |
 | **Vasicek Model** | Regulatory capital (VaR @ 99.9%) | Unexpected Loss, Capital Requirement |
-| **Visualization** | Interactive dashboards | Power BI, Streamlit, PDF Reports |
+| **Visualization** | Interactive dashboards | Streamlit, PDF Reports (Power BI data exports provided) |
 
 ### Business Applications
 
@@ -82,7 +82,7 @@ This project builds a **production-grade credit risk analytics engine** that pro
 | **Data Processing** | Pandas, NumPy, Parquet |
 | **Machine Learning** | Scikit-learn (HistGradientBoosting, GradientBoosting) |
 | **Statistical Modeling** | SciPy, Vasicek Model |
-| **Visualization** | Power BI, Streamlit, Matplotlib, Seaborn, Plotly |
+| **Visualization** | Streamlit, Matplotlib, Seaborn, Plotly, Power BI (data exports) |
 | **Reporting** | LaTeX (pdflatex) |
 
 ---
@@ -142,9 +142,9 @@ This project builds a **production-grade credit risk analytics engine** that pro
 │   ┌────────────────────────────┐      ┌────────────────────────────┐          │
 │   │      VISUALIZATION         │      │      REPORTING             │          │
 │   │      ────────────          │      │      ─────────             │          │
-│   │ • Power BI Dashboard       │      │ • PDF Risk Report          │          │
-│   │ • Streamlit Web App        │      │ • Executive Summary        │          │
-│   │ • Loss distribution charts │      │ • Model documentation      │          │
+│   │ • Streamlit Web App        │      │ • PDF Risk Report          │          │
+│   │ • Loss distribution charts │      │ • Executive Summary        │          │
+│   │ • Power BI (data exports)  │      │ • Model documentation      │          │
 │   └────────────────────────────┘      └────────────────────────────┘          │
 │                                                                               │
 └───────────────────────────────────────────────────────────────────────────────┘
@@ -374,7 +374,7 @@ Below are a few examples (actual files will appear after execution):
 
 > **Power BI Dashboard**: Although a ready-to-use `.pbix` file is not included, all necessary data exports are available in `data/powerbi/` (27+ CSV files). You can easily import them into Power BI and build your own interactive dashboard.
 
-> **Note**:All actual charts can be found in `output/figures/` after running the pipeline.
+> **Note**: All actual charts can be found in `output/figures/` after running the pipeline.
 
 ---
 <a name="lessons-learned"></a>
