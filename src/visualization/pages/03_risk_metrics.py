@@ -11,6 +11,7 @@ from pathlib import Path
 import streamlit as st
 import pandas as pd
 import numpy as np
+import plotly.graph_objects as go
 
 # Ensure project root is importable
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
@@ -110,10 +111,7 @@ st.markdown(
     "Results are illustrative and computed entirely client-side."
 )
 
-# These variables should be defined earlier in the page
-# el_df = DataFetcher.el_by_grade()
-# total_el = el_df["total_el"].sum()
-
+# el_df is already defined earlier in the page via _el()
 with st.form("stress_test_form"):
     col_a, col_b = st.columns(2)
     with col_a:
@@ -123,6 +121,7 @@ with st.form("stress_test_form"):
     submitted = st.form_submit_button("Run Stress Test")
 
 if submitted:
+    # Work on a copy to avoid mutating original
     stressed_el = el_df.copy()
     stressed_el["stressed_pd"] = np.minimum(stressed_el["pd"] * pd_shock, 1.0)
     stressed_el["stressed_lgd"] = np.minimum(stressed_el["lgd"] * lgd_shock, 1.0)
@@ -139,13 +138,12 @@ if submitted:
         (stressed_total - total_el) / total_el * 100 if total_el > 0 else 0,
     ))
 
-    import plotly.graph_objects as go
-    colors = ["#2980b9", "#e74c3c"]
+    # Plotly chart
     fig_stress = go.Figure(data=[
         go.Bar(name="Baseline EL", x=el_df["grade"], y=el_df["total_el"],
-               marker_color=colors[0]),
+               marker_color="#2980b9"),
         go.Bar(name="Stressed EL", x=stressed_el["grade"], y=stressed_el["stressed_el"],
-               marker_color=colors[1]),
+               marker_color="#e74c3c"),
     ])
     fig_stress.update_layout(barmode="group", title="Baseline vs Stressed EL by Grade",
                              template="plotly_white", height=450)
