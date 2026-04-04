@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/credit_risk_banner.png" alt="Credit Risk Analytics Banner" width="100%">
+  <img src="output/figures/credit_risk_banner.png" alt="Credit Risk Analytics Banner" width="100%">
 
   <h1 align="center">Credit Portfolio Risk Analytics Engine</h1>
 
@@ -217,8 +217,6 @@ Credit-Portfolio-Risk-Analytics-Engine/
 │   ├── models/                       # Trained models & metrics
 │   └── reports/                      # PDF & LaTeX reports
 │
-├── assets/                           # Images for README (optional)
-│
 ├── config.py                         # Configuration (paths, DB)
 ├── main.py                           # Pipeline orchestrator
 ├── app.py                            # Streamlit dashboard entry point
@@ -279,6 +277,9 @@ python main.py
 
 # Or launch Streamlit dashboard
 streamlit run app.py
+
+# Generate static PNG charts (optional)
+python src/visualization/chart_generator.py
 ```
 
 ---
@@ -362,19 +363,18 @@ VaR @ 99.9% confidence level
 <a name="visualization-preview"></a>
 ## 📈 Visualization Preview
 
-### Loss Distribution
+All static charts are automatically generated and saved to `output/figures/` when you run the pipeline (`python main.py`).  
+Below are a few examples (actual files will appear after execution):
 
-![Loss Distribution](assets/loss_distribution.png)
+![Default Rate by Grade](output/figures/05_default_rate_by_grade.png)
 
-### Default Rate by Grade
+![Loss Given Default by Grade](output/figures/09_lgd_by_grade.png)
 
-![Default Rate](assets/default_rate_heatmap.png)
+![Expected Loss by Grade](output/figures/11_expected_loss_by_grade.png)
 
-### Power BI Dashboard
+> **Power BI Dashboard**: Although a ready-to-use `.pbix` file is not included, all necessary data exports are available in `data/powerbi/` (27+ CSV files). You can easily import them into Power BI and build your own interactive dashboard.
 
-![Power BI](assets/powerbi_dashboard.png)
-
-> **Note**: The images above are placeholders. Actual charts can be found in `output/figures/` after running the pipeline.
+> **Note**:All actual charts can be found in `output/figures/` after running the pipeline.
 
 ---
 <a name="lessons-learned"></a>
