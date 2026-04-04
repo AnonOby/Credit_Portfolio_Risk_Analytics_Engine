@@ -101,7 +101,7 @@ with tab3:
     dti_df = _default_by_dti()
     dti_df["label"] = dti_df["dti_low"].astype(str) + "-" + dti_df["dti_high"].astype(str)
     st.plotly_chart(
-        ChartBuilder.default_by_segment_bar(dti_df, "label",
+        ChartBuilder.default_by_segment(dti_df, "label",
                                             "Default Rate by DTI Range"),
         use_container_width=True,
     )
