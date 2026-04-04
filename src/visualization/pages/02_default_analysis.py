@@ -83,15 +83,15 @@ tab1, tab2 = st.tabs(["By Purpose", "By Home Ownership"])
 with tab1:
     purpose_df = _default_by_purpose()
     st.plotly_chart(
-        ChartBuilder.default_by_segment_bar(purpose_df, "purpose",
-                                            "Default Rate by Loan Purpose"),
+        ChartBuilder.default_by_segment(purpose_df, "purpose",
+                                        "Default Rate by Loan Purpose"),
         use_container_width=True,
     )
 with tab2:
     home_df = _default_by_home()
     st.plotly_chart(
-        ChartBuilder.default_by_segment_bar(home_df, "home_ownership",
-                                            "Default Rate by Home Ownership"),
+        ChartBuilder.default_by_segment(home_df, "home_ownership",
+                                        "Default Rate by Home Ownership"),
         use_container_width=True,
     )
 
