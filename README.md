@@ -78,7 +78,7 @@ This project builds a **production-grade credit risk analytics engine** that pro
 
 | Category | Technologies |
 |----------|--------------|
-| **Database** | PostgreSQL 15, SQLAlchemy |
+| **Database** | PostgreSQL 18, SQLAlchemy |
 | **Data Processing** | Pandas, NumPy, Parquet |
 | **Machine Learning** | Scikit-learn (HistGradientBoosting, GradientBoosting) |
 | **Statistical Modeling** | SciPy, Vasicek Model |
